@@ -8,7 +8,7 @@
  * Bumper CACHE_VERSION à chaque déploiement pour purger l'ancien cache.
  */
 
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const SHELL_CACHE = `accratrip-shell-${CACHE_VERSION}`;
 const TILE_CACHE = `accratrip-tiles-${CACHE_VERSION}`;
 const TILE_MAX = 300;
