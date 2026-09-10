@@ -27,12 +27,19 @@ const map = L.map("map", {
 }).setView([5.66, -0.19], 11);
 
 L.tileLayer(
-  "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+  "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
   {
     attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    maxZoom: 19,
-    subdomains: "abcd",
+      'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 16,
+  }
+).addTo(map);
+
+L.tileLayer(
+  "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
+  {
+    maxZoom: 16,
+    pane: "overlayPane",
   }
 ).addTo(map);
 
@@ -235,7 +242,7 @@ function updateCardVisual(placeId) {
 function initFirebase() {
   if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "REMPLACE_MOI") {
     progressLabel.textContent =
-      "Configuration Firebase manquante — voir README.md pour activer le suivi partagé.";
+      "Configuration Firebase manquante - voir README.md pour activer le suivi partagé.";
     return;
   }
 
@@ -261,7 +268,7 @@ function initFirebase() {
   } catch (error) {
     console.error("Erreur d'initialisation Firebase :", error);
     progressLabel.textContent =
-      "Suivi partagé indisponible — vérifie js/firebase-config.js.";
+      "Suivi partagé indisponible - vérifie js/firebase-config.js.";
   }
 }
 
