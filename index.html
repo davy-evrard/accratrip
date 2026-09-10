@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Accra 2026 — Carnet de voyage</title>
+  <meta name="description" content="Carnet de voyage collaboratif pour le séjour du groupe à Accra, Ghana, octobre 2026." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;0,700;1,500&family=Karla:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧳</text></svg>" />
+
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <p class="eyebrow">Ghana · Octobre 2026</p>
+    <h1>Carnet de route — Accra</h1>
+    <p class="subtitle">La carte et la liste du groupe pour le séjour</p>
+  </header>
+
+  <p class="shared-notice">
+    <strong>Suivi partagé.</strong> Le statut « visité » est commun à tout le
+    groupe et se met à jour en direct, sans compte ni connexion — toute
+    personne qui ouvre ce lien peut cocher pour tout le monde.
+  </p>
+
+  <section class="progress" aria-live="polite">
+    <div class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress-bar">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+    <p class="progress-label" id="progress-label">Chargement du suivi du groupe…</p>
+  </section>
+
+  <nav class="filters" id="filters" aria-label="Filtrer par catégorie">
+    <button class="filter-chip is-active" data-filter="all">Tous les lieux</button>
+    <!-- chips de catégorie injectées en JS -->
+  </nav>
+
+  <div id="map" class="map" aria-label="Carte des lieux du séjour à Accra"></div>
+
+  <main id="list" class="place-list">
+    <!-- sections de catégories injectées en JS -->
+  </main>
+
+  <footer class="site-footer">
+    <p>Bon voyage à Accra ✈️ — fait avec Leaflet, CARTO &amp; Firebase.</p>
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,352 @@
+:root {
+  --bg: #14181c;
+  --bg-elevated: #1b2126;
+  --bg-card: #1e252b;
+  --border: #333b42;
+  --border-soft: #2a3138;
+  --text: #ece6da;
+  --text-dim: #a9a29c;
+  --text-faint: #7c8288;
+
+  --accent-logement: #c9a227;
+  --accent-centre: #c1543c;
+  --accent-sorties: #3a9298;
+  --accent-aburi: #5c9468;
+  --accent-musee: #9b6fa3;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Karla", system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+  padding-bottom: 3rem;
+}
+
+h1, h2, h3 {
+  font-family: "Fraunces", Georgia, serif;
+  font-weight: 600;
+  margin: 0;
+}
+
+a {
+  color: inherit;
+}
+
+/* --- Header --- */
+
+.site-header {
+  padding: 2.25rem 1.25rem 1rem;
+  text-align: center;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(201, 162, 39, 0.12), transparent 45%),
+    radial-gradient(circle at 80% 0%, rgba(58, 146, 152, 0.12), transparent 40%);
+}
+
+.eyebrow {
+  margin: 0 0 0.4rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.site-header h1 {
+  font-size: 1.9rem;
+  letter-spacing: 0.01em;
+}
+
+.subtitle {
+  margin: 0.5rem 0 0;
+  color: var(--text-dim);
+  font-size: 0.95rem;
+}
+
+/* --- Shared notice --- */
+
+.shared-notice {
+  margin: 0 1.25rem 1.25rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  color: var(--text-dim);
+  font-size: 0.82rem;
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.shared-notice strong {
+  color: var(--text);
+}
+
+/* --- Progress --- */
+
+.progress {
+  max-width: 640px;
+  margin: 0 auto 1.25rem;
+  padding: 0 1.25rem;
+}
+
+.progress-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-soft);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent-aburi), var(--accent-sorties));
+  transition: width 0.4s ease;
+}
+
+.progress-label {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+/* --- Filters --- */
+
+.filters {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0 1.25rem 1rem;
+  scrollbar-width: none;
+}
+
+.filters::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-chip {
+  flex: 0 0 auto;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  font-family: "Karla", sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.filter-chip[data-filter]:not([data-filter="all"]) {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+}
+
+.filter-chip.is-active {
+  background: var(--accent, var(--text));
+  border-color: var(--accent, var(--text));
+  color: #14181c;
+}
+
+/* --- Map --- */
+
+.map {
+  height: 46vh;
+  min-height: 280px;
+  max-height: 420px;
+  width: 100%;
+  border-top: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--bg-card);
+  color: var(--text);
+}
+
+/* --- List --- */
+
+.place-list {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 0.5rem;
+}
+
+.category-section + .category-section {
+  margin-top: 2rem;
+}
+
+.category-title {
+  font-size: 1.15rem;
+  color: var(--accent, var(--text));
+  border-bottom: 1px dashed var(--border);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.place-card {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-left: 3px solid var(--accent, var(--border));
+  border-radius: 10px;
+  padding: 0.95rem 1rem;
+  transition: box-shadow 0.4s ease, border-color 0.4s ease;
+}
+
+.place-card.is-highlighted {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.place-card.is-visited {
+  opacity: 0.72;
+}
+
+.card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.card-top h3 {
+  font-size: 1.05rem;
+  line-height: 1.3;
+}
+
+.approx-badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  font-family: "Karla", sans-serif;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.05rem 0.4rem;
+  vertical-align: middle;
+}
+
+.place-desc {
+  margin: 0.5rem 0 0.85rem;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.maps-link {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--accent, var(--text));
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
+.maps-link--disabled {
+  color: var(--text-faint);
+  border-bottom-color: transparent;
+  font-weight: 500;
+}
+
+.locate-btn {
+  font-family: "Karla", sans-serif;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+}
+
+.locate-btn:hover {
+  color: var(--text);
+  border-color: var(--text-dim);
+}
+
+/* --- Visited "stamp" toggle --- */
+
+.visited-toggle {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: transparent;
+  border: 1.5px dashed var(--border);
+  border-radius: 999px;
+  padding: 0.3rem 0.6rem 0.3rem 0.4rem;
+  color: var(--text-faint);
+  font-family: "Karla", sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+
+.visited-toggle .stamp-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  font-size: 0.7rem;
+}
+
+.place-card.is-visited .visited-toggle {
+  border-style: solid;
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: rotate(-3deg);
+}
+
+.place-card.is-visited .visited-toggle .stamp-mark {
+  background: var(--accent);
+  color: #14181c;
+}
+
+/* --- Footer --- */
+
+.site-footer {
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 0.78rem;
+  padding: 2rem 1.25rem 0;
+}
+
+/* --- Small screens polish --- */
+
+@media (max-width: 380px) {
+  .site-header h1 {
+    font-size: 1.6rem;
+  }
+}
