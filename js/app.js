@@ -234,6 +234,61 @@ function updateCountdown() {
     el.classList.remove("has-ticker");
     el.textContent = "Souvenirs d'Accra";
   }
+
+  updateRecap(now > TRIP_END);
+}
+
+// Bilan affiché une fois le séjour terminé.
+function updateRecap(isAfter) {
+  const recap = document.getElementById("recap");
+  const list = document.getElementById("recap-list");
+  if (!recap || !list) return;
+
+  recap.hidden = !isAfter;
+  if (!isAfter) return;
+
+  const visitedCount = PLACES.filter((p) => visitedState[p.id]).length;
+
+  const doneCats = Object.entries(CATEGORIES)
+    .filter(([key]) => {
+      const inCat = PLACES.filter((p) => p.category === key);
+      return inCat.length > 0 && inCat.every((p) => visitedState[p.id]);
+    })
+    .map(([, c]) => `${c.icon} ${c.label}`);
+
+  let topPlace = null;
+  let topCount = 0;
+  for (const place of PLACES) {
+    const n = Object.keys(reactionState[place.id] || {}).length;
+    if (n > topCount) {
+      topCount = n;
+      topPlace = place;
+    }
+  }
+
+  const photos = PLACES.filter((p) => (photoState[p.id] || {}).dataUrl).length;
+  const notes = PLACES.filter((p) => (noteState[p.id] || {}).text).length;
+
+  const lines = [
+    `🏁 ${visitedCount} / ${PLACES.length} lieux visités par le groupe`,
+    doneCats.length
+      ? `✅ Catégories bouclées : ${doneCats.join(", ")}`
+      : "✅ Aucune catégorie complète... il faudra revenir !",
+  ];
+  if (topPlace) {
+    lines.push(
+      `🔥 Lieu le plus plébiscité : ${topPlace.name} (${topCount} réaction${
+        topCount > 1 ? "s" : ""
+      })`
+    );
+  }
+  lines.push(`📸 ${photos} photo${photos > 1 ? "s" : ""} · 📝 ${notes} note${
+    notes > 1 ? "s" : ""
+  }`);
+
+  list.innerHTML = lines
+    .map((l) => `<li class="recap-line">${escapeHtml(l)}</li>`)
+    .join("");
 }
 
 function flyToPlace(place, { scrollToMap = true } = {}) {
