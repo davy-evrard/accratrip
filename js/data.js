@@ -1,5 +1,5 @@
 // Jeu de données du voyage : catégories et lieux.
-// Modifier ce fichier suffit pour ajouter/retirer un lieu — aucune autre
+// Modifier ce fichier suffit pour ajouter/retirer un lieu - aucune autre
 // partie du code n'a besoin d'être touchée.
 
 export const CATEGORIES = {
@@ -29,7 +29,7 @@ export const PLACES = [
     lng: -0.257174,
     mapsUrl: "https://maps.google.com/?cid=11759453831122783048",
     description:
-      "Notre deuxième logement du séjour, niché en hauteur avec une jolie vue sur les environs — un bon changement d'ambiance pour la suite du voyage.",
+      "Notre deuxième logement du séjour, niché en hauteur avec une jolie vue sur les environs - un bon changement d'ambiance pour la suite du voyage.",
   },
   {
     id: "chrismaison",
@@ -129,7 +129,7 @@ export const PLACES = [
     lng: -0.1623031,
     mapsUrl: "https://maps.google.com/?cid=15160807808171884800",
     description:
-      "Un beach club où siroter un cocktail les pieds dans le sable, avec vue sur l'océan — parfait pour un coucher de soleil entre amis.",
+      "Un beach club où siroter un cocktail les pieds dans le sable, avec vue sur l'océan - parfait pour un coucher de soleil entre amis.",
   },
   {
     id: "mall",
@@ -160,7 +160,7 @@ export const PLACES = [
     approx: true,
     mapsUrl: "https://maps.google.com/?cid=1211995787067304236",
     description:
-      "Un parc nature proche d'Aburi, pensé pour les activités en plein air. Position approximative sur la carte — on affinera sur place.",
+      "Un parc nature proche d'Aburi, pensé pour les activités en plein air. Position approximative sur la carte - on affinera sur place.",
   },
   {
     id: "despite",

@@ -71,6 +71,35 @@ a {
   font-size: 0.95rem;
 }
 
+.countdown {
+  display: inline-block;
+  margin: 0.85rem 0 0;
+  padding: 0.32rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.countdown[data-phase="before"] {
+  color: var(--accent-sorties);
+  border-color: color-mix(in srgb, var(--accent-sorties) 45%, var(--border));
+}
+
+.countdown[data-phase="during"] {
+  color: #14181c;
+  background: var(--accent-aburi);
+  border-color: var(--accent-aburi);
+}
+
+.countdown[data-phase="after"] {
+  color: var(--accent-logement);
+  border-color: color-mix(in srgb, var(--accent-logement) 45%, var(--border));
+}
+
 /* --- Shared notice --- */
 
 .shared-notice {
@@ -334,6 +363,28 @@ a {
   color: #14181c;
 }
 
+/* Tampon qui claque quand un lieu passe en "visité" */
+@keyframes stamp-slam {
+  0% {
+    transform: rotate(-3deg) scale(2.1);
+    opacity: 0;
+  }
+  55% {
+    transform: rotate(-3deg) scale(0.84);
+    opacity: 1;
+  }
+  75% {
+    transform: rotate(-3deg) scale(1.08);
+  }
+  100% {
+    transform: rotate(-3deg) scale(1);
+  }
+}
+
+.visited-toggle.just-stamped {
+  animation: stamp-slam 0.42s cubic-bezier(0.2, 0.75, 0.3, 1);
+}
+
 /* --- Footer --- */
 
 .site-footer {
@@ -343,10 +394,58 @@ a {
   padding: 2rem 1.25rem 0;
 }
 
+/* --- Payoff : tous les lieux visités --- */
+
+.progress-label.is-complete {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.confetti-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.confetti-bit {
+  position: absolute;
+  top: -6vh;
+  width: 8px;
+  height: 13px;
+  border-radius: 2px;
+  animation-name: confetti-fall;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(0) rotate(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(112vh) rotate(720deg);
+    opacity: 0.9;
+  }
+}
+
 /* --- Small screens polish --- */
 
 @media (max-width: 380px) {
   .site-header h1 {
     font-size: 1.6rem;
+  }
+}
+
+/* --- Accessibilité : mouvement réduit --- */
+
+@media (prefers-reduced-motion: reduce) {
+  .visited-toggle.just-stamped {
+    animation: none;
+  }
+  .confetti-layer {
+    display: none;
   }
 }

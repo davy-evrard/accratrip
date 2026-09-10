@@ -30,7 +30,7 @@ L.tileLayer(
   "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
   {
     attribution:
-      'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      'Tiles &copy; Esri - Esri, DeLorme, NAVTEQ &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     maxZoom: 16,
   }
 ).addTo(map);
@@ -42,6 +42,32 @@ L.tileLayer(
     pane: "overlayPane",
   }
 ).addTo(map);
+
+// --- Compte à rebours -------------------------------------------------
+
+const TRIP_START = new Date("2026-10-07T00:00:00Z");
+const TRIP_END = new Date("2026-10-11T23:59:59Z");
+const TRIP_DAYS = 5;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+function updateCountdown() {
+  const el = document.getElementById("countdown");
+  if (!el) return;
+
+  const now = new Date();
+  if (now < TRIP_START) {
+    const days = Math.ceil((TRIP_START - now) / MS_PER_DAY);
+    el.textContent = days <= 1 ? "J-1 avant Accra" : `J-${days} avant Accra`;
+    el.dataset.phase = "before";
+  } else if (now <= TRIP_END) {
+    const dayNum = Math.floor((now - TRIP_START) / MS_PER_DAY) + 1;
+    el.textContent = `Jour ${dayNum} / ${TRIP_DAYS} à Accra`;
+    el.dataset.phase = "during";
+  } else {
+    el.textContent = "Souvenirs d'Accra";
+    el.dataset.phase = "after";
+  }
+}
 
 function flyToPlace(place) {
   if (place.lat == null || place.lng == null) return;
@@ -215,16 +241,53 @@ const progressFill = document.getElementById("progress-fill");
 const progressBar = document.getElementById("progress-bar");
 const progressLabel = document.getElementById("progress-label");
 const TOTAL_PLACES = PLACES.length;
+let hasCelebrated = false;
 
-function updateProgress() {
-  const visitedCount = Object.values(visitedState).filter(Boolean).length;
+function updateProgress({ allowCelebrate = false } = {}) {
+  // On ne compte que les lieux réellement présents dans data.js, pour
+  // ignorer d'éventuels documents Firestore orphelins (id renommé, etc.).
+  const visitedCount = PLACES.filter((p) => visitedState[p.id]).length;
   const pct = TOTAL_PLACES ? Math.round((visitedCount / TOTAL_PLACES) * 100) : 0;
+  const complete = TOTAL_PLACES > 0 && visitedCount === TOTAL_PLACES;
+
   progressFill.style.width = `${pct}%`;
   progressBar.setAttribute("aria-valuenow", String(pct));
-  progressLabel.textContent = `${visitedCount} / ${TOTAL_PLACES} lieux visités par le groupe`;
+  progressLabel.classList.toggle("is-complete", complete);
+  progressLabel.textContent = complete
+    ? `🇬🇭 ${TOTAL_PLACES} / ${TOTAL_PLACES} lieux visités - beau voyage !`
+    : `${visitedCount} / ${TOTAL_PLACES} lieux visités par le groupe`;
+
+  if (complete && allowCelebrate && !hasCelebrated) {
+    hasCelebrated = true;
+    celebrate();
+    if ("vibrate" in navigator) navigator.vibrate([0, 40, 30, 40, 30, 80]);
+  }
+  if (!complete) hasCelebrated = false;
 }
 
-function updateCardVisual(placeId) {
+function celebrate() {
+  if (document.querySelector(".confetti-layer")) return;
+
+  const colors = Object.values(CATEGORIES).map((c) => c.color);
+  const layer = document.createElement("div");
+  layer.className = "confetti-layer";
+  layer.setAttribute("aria-hidden", "true");
+
+  for (let i = 0; i < 48; i++) {
+    const bit = document.createElement("span");
+    bit.className = "confetti-bit";
+    bit.style.left = `${Math.random() * 100}vw`;
+    bit.style.background = colors[i % colors.length];
+    bit.style.animationDelay = `${Math.random() * 0.5}s`;
+    bit.style.animationDuration = `${2 + Math.random() * 1.6}s`;
+    layer.appendChild(bit);
+  }
+
+  document.body.appendChild(layer);
+  window.setTimeout(() => layer.remove(), 4600);
+}
+
+function updateCardVisual(placeId, animate = false) {
   const isVisited = !!visitedState[placeId];
   const card = document.getElementById(`place-${placeId}`);
   const btn = card ? card.querySelector(".visited-toggle") : null;
@@ -234,6 +297,17 @@ function updateCardVisual(placeId) {
     btn.querySelector(".visited-label").textContent = isVisited
       ? "Visité"
       : "Marquer visité";
+
+    if (animate && isVisited) {
+      btn.classList.remove("just-stamped");
+      void btn.offsetWidth; // force un reflow pour rejouer l'animation
+      btn.classList.add("just-stamped");
+      btn.addEventListener(
+        "animationend",
+        () => btn.classList.remove("just-stamped"),
+        { once: true }
+      );
+    }
   }
 }
 
@@ -250,14 +324,24 @@ function initFirebase() {
     const app = initializeApp(firebaseConfig);
     db = getFirestore(app);
 
+    let firstSnapshot = true;
+
     onSnapshot(
       collection(db, VISITED_COLLECTION),
       (snapshot) => {
         for (const change of snapshot.docChanges()) {
-          visitedState[change.doc.id] = !!change.doc.data().visited;
-          updateCardVisual(change.doc.id);
+          const wasVisited = !!visitedState[change.doc.id];
+          const nowVisited = !!change.doc.data().visited;
+          visitedState[change.doc.id] = nowVisited;
+          // On n'anime le tampon que pour un vrai passage à "visité" en
+          // direct, pas pour l'état déjà présent au premier chargement.
+          updateCardVisual(
+            change.doc.id,
+            !firstSnapshot && !wasVisited && nowVisited
+          );
         }
-        updateProgress();
+        updateProgress({ allowCelebrate: !firstSnapshot });
+        firstSnapshot = false;
       },
       (error) => {
         console.error("Erreur Firestore (lecture) :", error);
@@ -275,6 +359,7 @@ function initFirebase() {
 function toggleVisited(placeId) {
   if (!db) return;
   const nextValue = !visitedState[placeId];
+  if (nextValue && "vibrate" in navigator) navigator.vibrate(35);
   setDoc(
     doc(db, VISITED_COLLECTION, placeId),
     { visited: nextValue, updatedAt: serverTimestamp() },
@@ -286,3 +371,5 @@ function toggleVisited(placeId) {
 
 initFirebase();
 updateProgress();
+updateCountdown();
+window.setInterval(updateCountdown, 60 * 60 * 1000);

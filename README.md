@@ -1,17 +1,17 @@
-# Accra 2026 — Carnet de voyage
+# Accra 2026 - Carnet de voyage
 
 Petit site à page unique pour le groupe qui part à Accra (Ghana) en octobre
 2026 : carte interactive des lieux du séjour, liste filtrable par catégorie,
-et suivi partagé en temps réel de ce qui a déjà été visité — sans compte,
+et suivi partagé en temps réel de ce qui a déjà été visité - sans compte,
 juste avec le lien.
 
 100 % HTML/CSS/JS natif, aucun build. Hébergeable tel quel sur GitHub Pages.
 
 ## Stack
 
-- **Carte** : [Leaflet.js](https://leafletjs.com/) + tuiles sombres [CARTO](https://carto.com/basemaps)
+- **Carte** : [Leaflet.js](https://leafletjs.com/) + fond de carte sombre [Esri](https://www.arcgis.com/) (Dark Gray Canvas, sans clé API)
 - **Données** : `js/data.js` (catégories + lieux, à éditer directement)
-- **Temps réel partagé** : [Firebase Firestore](https://firebase.google.com/docs/firestore) (SDK JS, appelé directement depuis le navigateur — pas de serveur à maintenir)
+- **Temps réel partagé** : [Firebase Firestore](https://firebase.google.com/docs/firestore) (SDK JS, appelé directement depuis le navigateur - pas de serveur à maintenir)
 - **Hébergement** : GitHub Pages, branche `main`
 
 ## Structure du repo
@@ -30,13 +30,13 @@ firestore.rules        règles de sécurité Firestore (à coller dans la consol
 1. Va sur [console.firebase.google.com](https://console.firebase.google.com/) et clique sur **Ajouter un projet**. Donne-lui un nom (ex. `accratrip`), tu peux désactiver Google Analytics (pas nécessaire ici).
 2. Une fois le projet créé, dans le menu de gauche va sur **Compilation > Firestore Database**, puis **Créer une base de données**.
    - Choisis une région proche de vous (ex. `europe-west` ou `eur3`).
-   - Démarre en **mode production** (on va poser nos propres règles juste après — pas besoin du mode test).
+   - Démarre en **mode production** (on va poser nos propres règles juste après - pas besoin du mode test).
 3. Toujours dans Firestore, onglet **Règles**, remplace le contenu par celui du fichier [`firestore.rules`](./firestore.rules) de ce repo, puis **Publier**.
 
    Ces règles ouvrent la lecture/écriture publique **uniquement** sur la
    collection `visited`, et seulement pour des documents de la forme
    `{ visited: bool, updatedAt: ... }`. C'est un compromis volontaire adapté
-   à un usage privé entre amis avec un lien non indexé — pas un site public
+   à un usage privé entre amis avec un lien non indexé - pas un site public
    à grande audience. Aucune authentification, donc n'importe qui avec le
    lien peut cocher/décocher un lieu ; c'est le but (voir la recommandation
    plus bas si tu veux durcir un peu).
@@ -66,7 +66,7 @@ firestore.rules        règles de sécurité Firestore (à coller dans la consol
    qui protège réellement les données, ce sont les règles Firestore de
    l'étape 3.
 
-6. Commit et push ce fichier — sans lui, le site tourne quand même (carte,
+6. Commit et push ce fichier - sans lui, le site tourne quand même (carte,
    liste, filtres fonctionnent) mais le suivi « visité » reste désactivé et
    un message l'indique en haut de page.
 
@@ -95,7 +95,7 @@ python3 -m http.server 8000
 
 Tout se passe dans [`js/data.js`](./js/data.js) : `CATEGORIES` (label +
 couleur) et `PLACES` (un objet par lieu). Ajouter, retirer ou modifier un
-lieu là-bas suffit — la carte, la liste, les filtres et le compteur de
+lieu là-bas suffit - la carte, la liste, les filtres et le compteur de
 progression s'adaptent automatiquement (le total du compteur est calculé
 dynamiquement à partir du nombre de lieux, pas codé en dur).
 
@@ -118,12 +118,12 @@ site simple comme demandé :
   Si tu veux limiter les écritures à des personnes du groupe sans mettre en
   place de vrais comptes, une option simple est l'**auth anonyme
   Firebase** (`signInAnonymously`) combinée à un champ `updatedBy` dans les
-  règles — invisible pour les utilisateurs, mais ça donne une trace et
+  règles - invisible pour les utilisateurs, mais ça donne une trace et
   permet de limiter le débit d'écriture par utilisateur si besoin.
 - **Petites touches pratiques pour le séjour** : un lien « Itinéraire » vers
   chaque lieu depuis la position actuelle (Google Maps `?daddr=`), une note
   libre par lieu (« on y va tel jour »), ou un tri « les plus proches de
-  moi » via `navigator.geolocation` — utile en marchant dans Accra.
+  moi » via `navigator.geolocation` - utile en marchant dans Accra.
 - **Petit historique** : le champ `updatedAt` est déjà stocké mais pas
   affiché ; un petit « visité le 12/10 » sous le lieu serait un ajout
   mineur et sympa comme souvenir de voyage.
@@ -133,4 +133,4 @@ site simple comme demandé :
   lecture de la carte si le groupe s'agrandit.
 
 Aucune de ces pistes n'est nécessaire pour que le site fonctionne bien tel
-quel — à prendre si tu as envie de bricoler encore un peu avant octobre.
+quel - à prendre si tu as envie de bricoler encore un peu avant octobre.
