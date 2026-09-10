@@ -24,7 +24,7 @@ const NOTE_MAX = 280;
 const visitedState = {}; // { [placeId]: boolean }
 const reactionState = {}; // { [placeId]: { [clientId]: emoji } }
 const planState = {}; // { [placeId]: 1..5 | null }
-const noteState = {}; // { [placeId]: string }
+const noteState = {}; // { [placeId]: { text, by, at: Date|null } }
 const markers = {}; // { [placeId]: L.Marker }
 let db = null;
 let editingNote = null; // placeId de la note en cours d'édition (sinon null)
@@ -46,6 +46,43 @@ function getClientId() {
   } catch {
     return `c-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   }
+}
+
+// Prénom affiché à côté des notes. Demandé une seule fois, stocké en local.
+function getName() {
+  try {
+    return localStorage.getItem("accratrip-name") || "";
+  } catch {
+    return "";
+  }
+}
+
+function ensureName() {
+  let name = getName();
+  if (!name) {
+    name = (
+      window.prompt("Ton prénom (affiché à côté de tes notes) :") || ""
+    )
+      .trim()
+      .slice(0, 40);
+    try {
+      if (name) localStorage.setItem("accratrip-name", name);
+    } catch {
+      /* localStorage indisponible : on garde juste la valeur pour cette session */
+    }
+  }
+  return name;
+}
+
+function relativeTime(date) {
+  const s = Math.round((Date.now() - date.getTime()) / 1000);
+  if (s < 45) return "à l'instant";
+  const m = Math.round(s / 60);
+  if (m < 60) return `il y a ${m} min`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `il y a ${h} h`;
+  const d = Math.round(h / 24);
+  return `il y a ${d} j`;
 }
 
 // --- Toast (retour visible sur erreur) -------------------------------
@@ -312,7 +349,7 @@ function applyFilter({ fit = false } = {}) {
     }
   }
 
-  for (const section of document.querySelectorAll(".category-section")) {
+  for (const section of document.querySelectorAll(".list-section")) {
     const anyVisible = section.querySelector(".place-card:not([hidden])");
     section.hidden = !anyVisible;
   }
@@ -413,6 +450,7 @@ function buildCard(place) {
     </div>
     <div class="note" data-id="${place.id}">
       <p class="note-text" hidden></p>
+      <p class="note-meta" hidden></p>
       <button class="note-edit" data-id="${place.id}">+ Note partagée</button>
       <div class="note-form" hidden>
         <textarea class="note-input" maxlength="${NOTE_MAX}" rows="2" placeholder="Ex : réservé jeudi 20h, prévoir du cash..."></textarea>
@@ -427,27 +465,77 @@ function buildCard(place) {
   return article;
 }
 
-for (const [key, cat] of Object.entries(CATEGORIES)) {
-  const placesInCat = PLACES.filter((p) => p.category === key);
-  if (placesInCat.length === 0) continue;
+const cardEls = {}; // { [placeId]: <article> }
 
+function makeSection(id, titleText, extraClass, accent) {
   const section = document.createElement("section");
-  section.className = "category-section";
-  section.id = `cat-${key}`;
+  section.className = `list-section ${extraClass}`;
+  section.id = id;
 
   const title = document.createElement("h2");
   title.className = "category-title";
-  title.style.setProperty("--accent", cat.color);
-  title.textContent = `${cat.icon} ${cat.label}`;
+  if (accent) title.style.setProperty("--accent", accent);
+  title.textContent = titleText;
   section.appendChild(title);
 
   const cards = document.createElement("div");
   cards.className = "cards";
-  for (const place of placesInCat) cards.appendChild(buildCard(place));
   section.appendChild(cards);
 
   listEl.appendChild(section);
+  return section;
 }
+
+for (const place of PLACES) {
+  cardEls[place.id] = buildCard(place);
+}
+
+for (const [key, cat] of Object.entries(CATEGORIES)) {
+  if (!PLACES.some((p) => p.category === key)) continue;
+  makeSection(`cat-${key}`, `${cat.icon} ${cat.label}`, "category-section", cat.color);
+}
+
+for (const d of DAYS) {
+  makeSection(`day-${d.n}`, `${d.label} - ${d.date}`, "day-section");
+}
+makeSection("day-none", "Non planifié", "day-section");
+
+// --- Vue liste : par catégorie ou par jour ---------------------------
+
+const groupToggleEl = document.getElementById("group-toggle");
+let groupBy = "category";
+
+function renderGrouping() {
+  listEl.dataset.group = groupBy;
+  for (const place of PLACES) {
+    const card = cardEls[place.id];
+    if (!card) continue;
+    let targetId;
+    if (groupBy === "day") {
+      const day = planState[place.id] ?? null;
+      targetId = day == null ? "day-none" : `day-${day}`;
+    } else {
+      targetId = `cat-${place.category}`;
+    }
+    const target = document.querySelector(`#${targetId} .cards`);
+    if (target) target.appendChild(card);
+  }
+  applyFilter();
+}
+
+if (groupToggleEl) {
+  groupToggleEl.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-group]");
+    if (!btn) return;
+    groupBy = btn.dataset.group;
+    for (const b of groupToggleEl.querySelectorAll("button")) {
+      b.classList.toggle("is-active", b === btn);
+    }
+    renderGrouping();
+  });
+}
+
+renderGrouping();
 
 listEl.addEventListener("click", (e) => {
   const locateBtn = e.target.closest(".locate-btn");
@@ -610,8 +698,10 @@ function updateNote(placeId) {
   const wrap = document.querySelector(`.note[data-id="${placeId}"]`);
   if (!wrap) return;
 
-  const text = noteState[placeId] || "";
+  const note = noteState[placeId] || {};
+  const text = note.text || "";
   const textEl = wrap.querySelector(".note-text");
+  const metaEl = wrap.querySelector(".note-meta");
   const editBtn = wrap.querySelector(".note-edit");
 
   wrap.querySelector(".note-form").hidden = true;
@@ -621,9 +711,17 @@ function updateNote(placeId) {
     textEl.textContent = text;
     textEl.hidden = false;
     editBtn.textContent = "Modifier la note";
+
+    const parts = [];
+    if (note.by) parts.push(note.by);
+    if (note.at instanceof Date) parts.push(relativeTime(note.at));
+    metaEl.textContent = parts.join(" - ");
+    metaEl.hidden = parts.length === 0;
   } else {
     textEl.textContent = "";
     textEl.hidden = true;
+    metaEl.textContent = "";
+    metaEl.hidden = true;
     editBtn.textContent = "+ Note partagée";
   }
 }
@@ -634,7 +732,7 @@ function openNoteEditor(placeId) {
 
   editingNote = placeId;
   const input = wrap.querySelector(".note-input");
-  input.value = noteState[placeId] || "";
+  input.value = (noteState[placeId] && noteState[placeId].text) || "";
   wrap.querySelector(".note-text").hidden = true;
   wrap.querySelector(".note-edit").hidden = true;
   wrap.querySelector(".note-form").hidden = false;
@@ -733,10 +831,10 @@ function initFirebase() {
             typeof raw === "number" && raw >= 1 && raw <= 5 ? raw : null;
           updatePlanner(change.doc.id);
         }
-        // Le filtre "par jour" dépend du planning : on ne relance applyFilter
-        // que s'il est effectivement actif (sinon un changement de planning
-        // n'a aucun impact sur la visibilité).
-        if (activeDay !== "all") applyFilter();
+        // Le planning influe sur la vue "par jour" et sur le filtre "par
+        // jour" : on ne recalcule que si l'un des deux est actif.
+        if (groupBy === "day") renderGrouping();
+        else if (activeDay !== "all") applyFilter();
       },
       (error) => {
         console.error("Erreur Firestore (planning, lecture) :", error);
@@ -747,8 +845,16 @@ function initFirebase() {
       collection(db, NOTES_COLLECTION),
       (snapshot) => {
         for (const change of snapshot.docChanges()) {
-          noteState[change.doc.id] =
-            change.type === "removed" ? "" : change.doc.data().text || "";
+          if (change.type === "removed") {
+            noteState[change.doc.id] = {};
+          } else {
+            const d = change.doc.data();
+            noteState[change.doc.id] = {
+              text: d.text || "",
+              by: d.by || "",
+              at: d.updatedAt && d.updatedAt.toDate ? d.updatedAt.toDate() : null,
+            };
+          }
           updateNote(change.doc.id);
         }
       },
@@ -812,13 +918,14 @@ function setDay(placeId, day) {
 function saveNote(placeId, text) {
   if (!db) return;
   const clean = text.slice(0, NOTE_MAX);
+  const by = ensureName();
   const previous = noteState[placeId];
   editingNote = null;
-  noteState[placeId] = clean; // affichage optimiste
+  noteState[placeId] = { text: clean, by, at: new Date() }; // affichage optimiste
   updateNote(placeId); // referme le formulaire tout de suite
   setDoc(
     doc(db, NOTES_COLLECTION, placeId),
-    { text: clean, updatedAt: serverTimestamp() },
+    { text: clean, by, updatedAt: serverTimestamp() },
     { merge: true }
   ).catch((error) => {
     console.error("Erreur Firestore (note) :", error);
@@ -858,6 +965,48 @@ function openFromHash() {
   if (!place) return;
   highlightCard(place.id);
   flyToPlace(place, { scrollToMap: false });
+}
+
+// --- Partage : lien natif si dispo, sinon QR ------------------------
+
+function shareUrl() {
+  return location.origin + location.pathname;
+}
+
+function openShareDialog() {
+  const url = shareUrl();
+  const dlg = document.getElementById("share-dialog");
+  const holder = document.getElementById("share-qr");
+  if (!dlg || !holder || typeof dlg.showModal !== "function") return;
+
+  holder.innerHTML = "";
+  if (typeof window.qrcode === "function") {
+    const qr = window.qrcode(0, "M");
+    qr.addData(url);
+    qr.make();
+    holder.innerHTML = qr.createImgTag(5, 12);
+  }
+  const urlEl = document.getElementById("share-url");
+  if (urlEl) urlEl.textContent = url;
+  dlg.showModal();
+}
+
+const shareBtn = document.getElementById("share-btn");
+if (shareBtn) {
+  shareBtn.addEventListener("click", async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "Carnet de route - Accra",
+          url: shareUrl(),
+        });
+        return;
+      } catch {
+        /* annulé ou indisponible : on retombe sur le QR */
+      }
+    }
+    openShareDialog();
+  });
 }
 
 initFirebase();

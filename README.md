@@ -11,18 +11,20 @@ juste avec le lien.
 
 - **Carte** : [Leaflet.js](https://leafletjs.com/) + fond de carte sombre [Esri](https://www.arcgis.com/) (Dark Gray Canvas, sans clé API)
 - **Données** : `js/data.js` (catégories, jours du séjour, lieux, à éditer directement)
-- **Temps réel partagé** : [Firebase Firestore](https://firebase.google.com/docs/firestore) (SDK JS, appelé directement depuis le navigateur - pas de serveur à maintenir) : statut "visité" du groupe, réactions emoji (🔥 ❤️ 👍), planning par jour et notes partagées par lieu
+- **Temps réel partagé** : [Firebase Firestore](https://firebase.google.com/docs/firestore) (SDK JS, appelé directement depuis le navigateur - pas de serveur à maintenir) : statut "visité" du groupe, réactions emoji (🔥 ❤️ 👍), planning par jour et notes partagées par lieu (avec prénom de l'auteur)
+- **Liste** : consultable par catégorie ou par jour du séjour ; bouton "Partager le carnet" (partage natif sur mobile, QR code sinon)
 - **Hébergement** : GitHub Pages, branche `main`
 
 ## Structure du repo
 
 ```
-index.html          page unique
-css/style.css        tout le style
-js/data.js            catégories (label, couleur, icône), jours du séjour, lieux (id, nom, coordonnées, lien Maps, description)
-js/firebase-config.js configuration du projet Firebase (à remplir, voir plus bas)
-js/app.js              carte, liste, filtres, réactions, planning, notes, synchronisation Firestore
-firestore.rules        règles de sécurité Firestore, collections "visited", "reactions", "planning" et "notes" (à coller dans la console Firebase)
+index.html            page unique
+css/style.css          tout le style
+js/data.js              catégories (label, couleur, icône), jours du séjour, lieux (id, nom, coordonnées, lien Maps, description)
+js/firebase-config.js   configuration du projet Firebase (à remplir, voir plus bas)
+js/app.js               carte, liste, filtres, réactions, planning, notes, partage, synchronisation Firestore
+js/vendor/qrcode.min.js encodeur QR (qrcode-generator, MIT), utilisé pour le partage
+firestore.rules          règles de sécurité Firestore, collections "visited", "reactions", "planning" et "notes" (à coller dans la console Firebase)
 ```
 
 ## 1. Créer le projet Firebase
@@ -38,13 +40,15 @@ firestore.rules        règles de sécurité Firestore, collections "visited", "
    `visited` (`{ visited: bool, updatedAt }`), `reactions`
    (`{ votes: { <idAppareil>: <emoji> }, updatedAt }`), `planning`
    (`{ day: 1..5 ou null, updatedAt }`) et `notes`
-   (`{ text: <string, 280 max>, updatedAt }`). C'est un compromis volontaire
-   adapté à un usage privé entre amis avec un lien non indexé - pas un site
-   public à grande audience. Aucune authentification, donc n'importe qui avec
-   le lien peut cocher un lieu, réagir, planifier ou écrire une note ; c'est
-   le but. L'`idAppareil` est un identifiant aléatoire stocké dans le
-   navigateur (`localStorage`), juste pour qu'on puisse retirer sa propre
-   réaction (voir la recommandation plus bas si tu veux durcir un peu).
+   (`{ text: <string, 280 max>, by: <string, 40 max>, updatedAt }`). C'est un
+   compromis volontaire adapté à un usage privé entre amis avec un lien non
+   indexé - pas un site public à grande audience. Aucune authentification,
+   donc n'importe qui avec le lien peut cocher un lieu, réagir, planifier ou
+   écrire une note ; c'est le but. L'`idAppareil` est un identifiant aléatoire
+   stocké dans le navigateur (`localStorage`), juste pour qu'on puisse retirer
+   sa propre réaction ; le `by` des notes est un prénom saisi une fois et
+   gardé en `localStorage` (voir la recommandation plus bas si tu veux durcir
+   un peu).
 
 4. Récupère la configuration du projet : **Paramètres du projet** (icône
    engrenage en haut à gauche) **> Général**, descends jusqu'à **Vos
@@ -126,13 +130,11 @@ site simple comme demandé :
   Firebase** (`signInAnonymously`) combinée à un champ `updatedBy` dans les
   règles - invisible pour les utilisateurs, mais ça donne une trace et
   permet de limiter le débit d'écriture par utilisateur si besoin.
-- **Petites touches pratiques pour le séjour** : un lien « Itinéraire » vers
-  chaque lieu depuis la position actuelle (Google Maps `?daddr=`), ou un tri
-  « les plus proches de moi » via `navigator.geolocation` - utile en marchant
-  dans Accra.
-- **Petit historique** : le champ `updatedAt` est stocké sur toutes les
-  collections mais pas affiché ; un petit « visité le 12/10 » sous le lieu
-  serait un ajout mineur et sympa comme souvenir de voyage.
+- **Plus proches de moi** : un tri par distance via `navigator.geolocation`,
+  avec un point « vous êtes ici » sur la carte - utile en marchant dans Accra.
+- **Petit historique** : les notes affichent déjà auteur + « il y a 2 h » ;
+  on pourrait faire pareil pour « visité le 12/10 » sous le lieu, comme
+  souvenir de voyage.
 
 Aucune de ces pistes n'est nécessaire pour que le site fonctionne bien tel
 quel - à prendre si tu as envie de bricoler encore un peu avant octobre.

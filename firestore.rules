@@ -33,12 +33,15 @@ service cloud.firestore {
                            && request.resource.data.day <= 5));
     }
 
-    // Notes libres partagées : { text: <string, 280 max>, updatedAt: ... }.
+    // Notes libres partagées :
+    // { text: <string, 280 max>, by: <string, 40 max>, updatedAt: ... }.
     match /notes/{placeId} {
       allow read: if true;
-      allow write: if request.resource.data.keys().hasOnly(['text', 'updatedAt'])
+      allow write: if request.resource.data.keys().hasOnly(['text', 'by', 'updatedAt'])
                    && request.resource.data.text is string
-                   && request.resource.data.text.size() <= 280;
+                   && request.resource.data.text.size() <= 280
+                   && request.resource.data.by is string
+                   && request.resource.data.by.size() <= 40;
     }
 
     // Tout le reste de la base est fermé par défaut.
