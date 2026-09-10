@@ -1,4 +1,4 @@
-// Jeu de données du voyage : catégories et lieux.
+// Jeu de données du voyage : catégories, jours du séjour et lieux.
 // Modifier ce fichier suffit pour ajouter/retirer un lieu - aucune autre
 // partie du code n'a besoin d'être touchée.
 

@@ -48,6 +48,38 @@ function getClientId() {
   }
 }
 
+// --- Toast (retour visible sur erreur) -------------------------------
+
+let toastTimer = null;
+
+function showToast(message) {
+  let el = document.getElementById("toast");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "toast";
+    el.className = "toast";
+    el.setAttribute("role", "status");
+    el.setAttribute("aria-live", "polite");
+    document.body.appendChild(el);
+  }
+  el.textContent = message;
+  el.classList.add("is-visible");
+  window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(
+    () => el.classList.remove("is-visible"),
+    5000
+  );
+}
+
+function showWriteError(error) {
+  const denied = error && error.code === "permission-denied";
+  showToast(
+    denied
+      ? "Enregistrement refusé - les règles Firestore ne sont peut-être pas publiées (voir README)."
+      : "Impossible d'enregistrer, vérifie ta connexion et réessaie."
+  );
+}
+
 // --- Carte --------------------------------------------------------------
 
 const map = L.map("map", {
@@ -71,6 +103,26 @@ L.tileLayer(
     pane: "overlayPane",
   }
 ).addTo(map);
+
+// Regroupe les marqueurs qui se chevauchent (paquet du bord de mer) et
+// les éclate quand on zoome.
+const markerLayer = L.markerClusterGroup({
+  maxClusterRadius: 45,
+  showCoverageOnHover: false,
+  spiderfyOnMaxZoom: true,
+});
+map.addLayer(markerLayer);
+
+function makeMarkerIcon(place, visited) {
+  const cat = CATEGORIES[place.category];
+  return L.divIcon({
+    className: "map-marker-wrap",
+    html: `<span class="map-marker${visited ? " is-visited" : ""}" style="--accent:${cat.color}">${cat.icon}</span>`,
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
+    popupAnchor: [0, -14],
+  });
+}
 
 // --- Compte à rebours -------------------------------------------------
 
@@ -140,9 +192,15 @@ function flyToPlace(place) {
   if (place.lat == null || place.lng == null) return;
   const mapEl = document.getElementById("map");
   if (mapEl) mapEl.scrollIntoView({ behavior: "smooth", block: "start" });
-  map.flyTo([place.lat, place.lng], 15, { duration: 0.6 });
+
   const marker = markers[place.id];
-  if (marker) marker.openPopup();
+  if (marker && markerLayer.hasLayer(marker)) {
+    // Dézoome le cluster si besoin pour révéler le marqueur, puis l'ouvre.
+    markerLayer.zoomToShowLayer(marker, () => marker.openPopup());
+  } else {
+    map.flyTo([place.lat, place.lng], 15, { duration: 0.6 });
+    if (marker) marker.openPopup();
+  }
 }
 
 function highlightCard(placeId) {
@@ -156,22 +214,16 @@ function highlightCard(placeId) {
 for (const place of PLACES) {
   if (place.lat == null || place.lng == null) continue;
   const cat = CATEGORIES[place.category];
-  const icon = L.divIcon({
-    className: "map-marker-wrap",
-    html: `<span class="map-marker" style="--accent:${cat.color}">${cat.icon}</span>`,
-    iconSize: [30, 30],
-    iconAnchor: [15, 15],
-    popupAnchor: [0, -14],
-  });
   const marker = L.marker([place.lat, place.lng], {
-    icon,
+    icon: makeMarkerIcon(place, false),
     keyboard: false,
-  }).addTo(map);
+  });
   marker.bindPopup(
     `<strong>${escapeHtml(place.name)}</strong><br>${escapeHtml(cat.label)}`
   );
   marker.on("click", () => highlightCard(place.id));
   markers[place.id] = marker;
+  markerLayer.addLayer(marker);
 }
 
 // --- Filtres --------------------------------------------------------------
@@ -225,6 +277,7 @@ dayFiltersEl.addEventListener("click", (e) => {
 
 function applyFilter({ fit = false } = {}) {
   const visiblePoints = [];
+  let visibleCount = 0;
 
   for (const place of PLACES) {
     const catOk = activeCategory === "all" || place.category === activeCategory;
@@ -233,17 +286,17 @@ function applyFilter({ fit = false } = {}) {
       activeDay === "all" ||
       (activeDay === "none" ? day == null : String(day) === activeDay);
     const visible = catOk && dayOk;
+    if (visible) visibleCount++;
 
     const card = document.getElementById(`place-${place.id}`);
     if (card) card.hidden = !visible;
 
     const marker = markers[place.id];
     if (marker) {
-      if (visible && !map.hasLayer(marker)) {
-        marker.addTo(map);
-        updateMarkerVisual(place.id); // le marqueur re-ajouté a un DOM neuf
+      if (visible && !markerLayer.hasLayer(marker)) markerLayer.addLayer(marker);
+      if (!visible && markerLayer.hasLayer(marker)) {
+        markerLayer.removeLayer(marker);
       }
-      if (!visible && map.hasLayer(marker)) map.removeLayer(marker);
       if (visible && place.lat != null && place.lng != null) {
         visiblePoints.push([place.lat, place.lng]);
       }
@@ -253,6 +306,20 @@ function applyFilter({ fit = false } = {}) {
   for (const section of document.querySelectorAll(".category-section")) {
     const anyVisible = section.querySelector(".place-card:not([hidden])");
     section.hidden = !anyVisible;
+  }
+
+  const statusEl = document.getElementById("filter-status");
+  if (statusEl) {
+    const filtered = activeCategory !== "all" || activeDay !== "all";
+    if (visibleCount === 0) {
+      statusEl.textContent = "Aucun lieu ne correspond à ce filtre.";
+    } else if (filtered) {
+      statusEl.textContent = `${visibleCount} lieu${
+        visibleCount > 1 ? "x" : ""
+      } sur ${PLACES.length}`;
+    } else {
+      statusEl.textContent = "";
+    }
   }
 
   if (fit && visiblePoints.length === 1) {
@@ -289,6 +356,12 @@ function buildCard(place) {
   article.style.setProperty("--accent", accent);
 
   const hasLocation = place.lat != null && place.lng != null;
+  // On n'accepte que des liens https:// explicites (les données sont
+  // maîtrisées, mais autant ne pas injecter n'importe quoi dans le href).
+  const safeMapsUrl =
+    typeof place.mapsUrl === "string" && place.mapsUrl.startsWith("https://")
+      ? place.mapsUrl
+      : null;
 
   article.innerHTML = `
     <div class="card-top">
@@ -303,8 +376,8 @@ function buildCard(place) {
     <p class="place-desc">${escapeHtml(place.description)}</p>
     <div class="card-actions">
       ${
-        place.mapsUrl
-          ? `<a class="maps-link" href="${place.mapsUrl}" target="_blank" rel="noopener">Voir sur Google Maps ↗</a>`
+        safeMapsUrl
+          ? `<a class="maps-link" href="${escapeHtml(safeMapsUrl)}" target="_blank" rel="noopener">Voir sur Google Maps ↗</a>`
           : `<span class="maps-link maps-link--disabled">Adresse partagée dans le groupe</span>`
       }
       ${
@@ -464,9 +537,10 @@ function celebrate() {
 
 function updateMarkerVisual(placeId) {
   const marker = markers[placeId];
-  const el = marker && marker.getElement();
-  const dot = el && el.querySelector(".map-marker");
-  if (dot) dot.classList.toggle("is-visited", !!visitedState[placeId]);
+  const place = PLACES.find((p) => p.id === placeId);
+  if (marker && place) {
+    marker.setIcon(makeMarkerIcon(place, !!visitedState[placeId]));
+  }
 }
 
 function updateReactions(placeId) {
@@ -642,7 +716,10 @@ function initFirebase() {
             typeof raw === "number" && raw >= 1 && raw <= 5 ? raw : null;
           updatePlanner(change.doc.id);
         }
-        applyFilter(); // le filtre "par jour" dépend du planning
+        // Le filtre "par jour" dépend du planning : on ne relance applyFilter
+        // que s'il est effectivement actif (sinon un changement de planning
+        // n'a aucun impact sur la visibilité).
+        if (activeDay !== "all") applyFilter();
       },
       (error) => {
         console.error("Erreur Firestore (planning, lecture) :", error);
@@ -679,6 +756,7 @@ function toggleVisited(placeId) {
     { merge: true }
   ).catch((error) => {
     console.error("Erreur Firestore (écriture) :", error);
+    showWriteError(error);
   });
 }
 
@@ -695,6 +773,7 @@ function toggleReaction(placeId, emoji) {
     { merge: true }
   ).catch((error) => {
     console.error("Erreur Firestore (réaction) :", error);
+    showWriteError(error);
   });
 }
 
@@ -709,12 +788,14 @@ function setDay(placeId, day) {
     { merge: true }
   ).catch((error) => {
     console.error("Erreur Firestore (planning) :", error);
+    showWriteError(error);
   });
 }
 
 function saveNote(placeId, text) {
   if (!db) return;
   const clean = text.slice(0, NOTE_MAX);
+  const previous = noteState[placeId];
   editingNote = null;
   noteState[placeId] = clean; // affichage optimiste
   updateNote(placeId); // referme le formulaire tout de suite
@@ -724,6 +805,9 @@ function saveNote(placeId, text) {
     { merge: true }
   ).catch((error) => {
     console.error("Erreur Firestore (note) :", error);
+    noteState[placeId] = previous; // on annule l'affichage optimiste
+    updateNote(placeId);
+    showWriteError(error);
   });
 }
 
