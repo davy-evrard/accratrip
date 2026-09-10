@@ -43,12 +43,12 @@ export const PLACES = [
   {
     id: "chrismaison",
     name: "Chrismaisonfood",
-    category: "logement",
-    lat: null,
-    lng: null,
-    mapsUrl: null,
+    category: "sorties",
+    lat: 5.6666209,
+    lng: -0.1801107,
+    mapsUrl: "https://maps.google.com/?q=5.6666209,-0.1801107",
     description:
-      "Une maison d'hôtes chaleureuse où l'on pourra aussi se régaler de plats locaux faits maison. L'adresse exacte sera partagée directement dans le groupe.",
+      "Un restaurant local chaleureux où se régaler de plats ghanéens faits maison.",
   },
   {
     id: "artcenter",

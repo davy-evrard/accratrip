@@ -105,9 +105,9 @@ carte, la liste, les filtres et le compteur de progression s'adaptent
 automatiquement (le total du compteur est calculé dynamiquement à partir du
 nombre de lieux, pas codé en dur).
 
-Un lieu sans `lat`/`lng` (ex. `chrismaison`, adresse privée) n'a simplement
-pas de marqueur sur la carte ni de bouton « Localiser » ; un lieu sans
-`mapsUrl` n'a pas de lien Google Maps.
+Un lieu sans `lat`/`lng` (adresse pas encore connue) n'a simplement pas de
+marqueur sur la carte ni de bouton « Localiser » ; un lieu sans `mapsUrl` n'a
+pas de lien Google Maps.
 
 ## Recommandations d'amélioration
 
