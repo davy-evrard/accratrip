@@ -229,6 +229,18 @@ a {
   display: none;
 }
 
+.filter-status {
+  margin: 0 1.25rem 0.75rem;
+  min-height: 1em;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.filter-status:empty {
+  margin-bottom: 0;
+}
+
 .filter-chip {
   flex: 0 0 auto;
   padding: 0.45rem 0.9rem;
@@ -294,6 +306,19 @@ a {
   border-style: dashed;
   opacity: 0.55;
   filter: grayscale(0.5);
+}
+
+/* Bulles de regroupement (leaflet.markercluster), adaptées au thème sombre */
+.marker-cluster {
+  background: color-mix(in srgb, var(--accent-sorties) 25%, var(--bg-card));
+}
+
+.marker-cluster div {
+  background: var(--bg-card);
+  color: var(--text);
+  border: 2px solid color-mix(in srgb, var(--accent-sorties) 60%, var(--border));
+  font-family: "Karla", sans-serif;
+  font-weight: 700;
 }
 
 /* --- List --- */
@@ -717,6 +742,32 @@ a {
   }
 }
 
+/* --- Toast (erreur d'écriture) --- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.25rem;
+  z-index: 10000;
+  max-width: min(30rem, calc(100vw - 2rem));
+  padding: 0.7rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--accent-centre) 55%, var(--border));
+  border-radius: 10px;
+  background: var(--bg-card);
+  color: var(--text);
+  font-size: 0.85rem;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transform: translate(-50%, 0.6rem);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.toast.is-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
 /* --- Small screens polish --- */
 
 @media (max-width: 380px) {
@@ -736,5 +787,9 @@ a {
   }
   .cd-sep {
     animation: none;
+  }
+  .toast {
+    transition: opacity 0.2s ease;
+    transform: translate(-50%, 0);
   }
 }
