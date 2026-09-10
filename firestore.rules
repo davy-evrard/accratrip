@@ -44,6 +44,18 @@ service cloud.firestore {
                    && request.resource.data.by.size() <= 40;
     }
 
+    // Photo par lieu, stockée en data URL JPEG redimensionnée côté client :
+    // { dataUrl: <string, 400 000 max>, by: <string, 40 max>, updatedAt: ... }.
+    // Une chaîne vide = pas de photo.
+    match /photos/{placeId} {
+      allow read: if true;
+      allow write: if request.resource.data.keys().hasOnly(['dataUrl', 'by', 'updatedAt'])
+                   && request.resource.data.dataUrl is string
+                   && request.resource.data.dataUrl.size() <= 400000
+                   && request.resource.data.by is string
+                   && request.resource.data.by.size() <= 40;
+    }
+
     // Tout le reste de la base est fermé par défaut.
     match /{document=**} {
       allow read, write: if false;
