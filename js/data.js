@@ -73,7 +73,7 @@ export const PLACES = [
   {
     id: "labadi",
     name: "Labadi Beach",
-    category: "centre",
+    category: "sorties",
     lat: 5.562204,
     lng: -0.1385295,
     mapsUrl: "https://maps.google.com/?cid=6609692905825325145",
