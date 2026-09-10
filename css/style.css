@@ -421,7 +421,15 @@ a {
   font-weight: 500;
 }
 
-.locate-btn {
+.card-tools {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.locate-btn,
+.route-link {
   font-family: "Karla", sans-serif;
   font-size: 0.78rem;
   color: var(--text-dim);
@@ -432,7 +440,14 @@ a {
   cursor: pointer;
 }
 
-.locate-btn:hover {
+.route-link {
+  color: var(--accent, var(--text-dim));
+  text-decoration: none;
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
+.locate-btn:hover,
+.route-link:hover {
   color: var(--text);
   border-color: var(--text-dim);
 }
