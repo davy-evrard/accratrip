@@ -1,4 +1,4 @@
-import { CATEGORIES, PLACES } from "./data.js";
+import { CATEGORIES, PLACES, DAYS } from "./data.js";
 import { firebaseConfig } from "./firebase-config.js";
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
@@ -14,14 +14,20 @@ import {
 
 const VISITED_COLLECTION = "visited";
 const REACTIONS_COLLECTION = "reactions";
+const PLANNING_COLLECTION = "planning";
+const NOTES_COLLECTION = "notes";
 const REACTIONS = ["🔥", "❤️", "👍"];
+const NOTE_MAX = 280;
 
 // --- État local -------------------------------------------------------
 
 const visitedState = {}; // { [placeId]: boolean }
 const reactionState = {}; // { [placeId]: { [clientId]: emoji } }
+const planState = {}; // { [placeId]: 1..5 | null }
+const noteState = {}; // { [placeId]: string }
 const markers = {}; // { [placeId]: L.Marker }
 let db = null;
+let editingNote = null; // placeId de la note en cours d'édition (sinon null)
 
 // Identifiant d'appareil (pas de compte) : permet de retirer / changer sa
 // propre réaction sans authentification. Stocké localement uniquement.
@@ -169,7 +175,9 @@ for (const place of PLACES) {
 // --- Filtres --------------------------------------------------------------
 
 const filtersEl = document.getElementById("filters");
-let activeFilter = "all";
+const dayFiltersEl = document.getElementById("day-filters");
+let activeCategory = "all";
+let activeDay = "all";
 
 for (const [key, cat] of Object.entries(CATEGORIES)) {
   const btn = document.createElement("button");
@@ -180,11 +188,34 @@ for (const [key, cat] of Object.entries(CATEGORIES)) {
   filtersEl.appendChild(btn);
 }
 
+for (const day of DAYS) {
+  const btn = document.createElement("button");
+  btn.className = "filter-chip";
+  btn.dataset.day = String(day.n);
+  btn.textContent = `${day.label} · ${day.date}`;
+  dayFiltersEl.appendChild(btn);
+}
+const unplannedChip = document.createElement("button");
+unplannedChip.className = "filter-chip";
+unplannedChip.dataset.day = "none";
+unplannedChip.textContent = "Non planifié";
+dayFiltersEl.appendChild(unplannedChip);
+
 filtersEl.addEventListener("click", (e) => {
   const btn = e.target.closest(".filter-chip");
   if (!btn) return;
-  activeFilter = btn.dataset.filter;
+  activeCategory = btn.dataset.filter;
   for (const chip of filtersEl.querySelectorAll(".filter-chip")) {
+    chip.classList.toggle("is-active", chip === btn);
+  }
+  applyFilter();
+});
+
+dayFiltersEl.addEventListener("click", (e) => {
+  const btn = e.target.closest(".filter-chip");
+  if (!btn) return;
+  activeDay = btn.dataset.day;
+  for (const chip of dayFiltersEl.querySelectorAll(".filter-chip")) {
     chip.classList.toggle("is-active", chip === btn);
   }
   applyFilter();
@@ -192,7 +223,12 @@ filtersEl.addEventListener("click", (e) => {
 
 function applyFilter() {
   for (const place of PLACES) {
-    const visible = activeFilter === "all" || place.category === activeFilter;
+    const catOk = activeCategory === "all" || place.category === activeCategory;
+    const day = planState[place.id] ?? null;
+    const dayOk =
+      activeDay === "all" ||
+      (activeDay === "none" ? day == null : String(day) === activeDay);
+    const visible = catOk && dayOk;
 
     const card = document.getElementById(`place-${place.id}`);
     if (card) card.hidden = !visible;
@@ -241,7 +277,7 @@ function buildCard(place) {
     <div class="card-top">
       <h3>${escapeHtml(place.name)}${
     place.approx ? '<span class="approx-badge">position approx.</span>' : ""
-  }</h3>
+  }<span class="day-badge" hidden></span></h3>
       <button class="visited-toggle" data-id="${place.id}" aria-pressed="false">
         <span class="stamp-mark" aria-hidden="true">✓</span>
         <span class="visited-label">Visité</span>
@@ -266,6 +302,23 @@ function buildCard(place) {
         <span class="r-emoji" aria-hidden="true">${emoji}</span><span class="r-count">0</span>
       </button>`
       ).join("")}
+    </div>
+    <div class="planner" data-id="${place.id}">
+      <span class="planner-label">Jour</span>
+      ${DAYS.map(
+        (d) => `<button class="day-pick" data-id="${place.id}" data-day="${d.n}" title="${d.label} - ${d.date}" aria-pressed="false">${d.n}</button>`
+      ).join("")}
+    </div>
+    <div class="note" data-id="${place.id}">
+      <p class="note-text" hidden></p>
+      <button class="note-edit" data-id="${place.id}">+ Note partagée</button>
+      <div class="note-form" hidden>
+        <textarea class="note-input" maxlength="${NOTE_MAX}" rows="2" placeholder="Ex : réservé jeudi 20h, prévoir du cash..."></textarea>
+        <div class="note-form-actions">
+          <button class="note-cancel" data-id="${place.id}">Annuler</button>
+          <button class="note-save" data-id="${place.id}">Enregistrer</button>
+        </div>
+      </div>
     </div>
   `;
 
@@ -305,6 +358,32 @@ listEl.addEventListener("click", (e) => {
   const reactionBtn = e.target.closest(".reaction");
   if (reactionBtn) {
     toggleReaction(reactionBtn.dataset.id, reactionBtn.dataset.emoji);
+    return;
+  }
+
+  const dayBtn = e.target.closest(".day-pick");
+  if (dayBtn) {
+    setDay(dayBtn.dataset.id, Number(dayBtn.dataset.day));
+    return;
+  }
+
+  const noteEditBtn = e.target.closest(".note-edit");
+  if (noteEditBtn) {
+    openNoteEditor(noteEditBtn.dataset.id);
+    return;
+  }
+
+  const noteCancelBtn = e.target.closest(".note-cancel");
+  if (noteCancelBtn) {
+    closeNoteEditor(noteCancelBtn.dataset.id);
+    return;
+  }
+
+  const noteSaveBtn = e.target.closest(".note-save");
+  if (noteSaveBtn) {
+    const wrap = noteSaveBtn.closest(".note");
+    const input = wrap && wrap.querySelector(".note-input");
+    if (input) saveNote(noteSaveBtn.dataset.id, input.value.trim());
     return;
   }
 
@@ -390,6 +469,75 @@ function updateReactions(placeId) {
   }
 }
 
+function updatePlanner(placeId) {
+  const day = planState[placeId] ?? null;
+
+  const card = document.getElementById(`place-${placeId}`);
+  const badge = card && card.querySelector(".day-badge");
+  if (badge) {
+    if (day == null) {
+      badge.hidden = true;
+      badge.textContent = "";
+    } else {
+      const meta = DAYS.find((d) => d.n === day);
+      badge.hidden = false;
+      badge.textContent = `J${day}`;
+      badge.title = meta ? `${meta.label} - ${meta.date}` : "";
+    }
+  }
+
+  const planner = document.querySelector(`.planner[data-id="${placeId}"]`);
+  if (planner) {
+    for (const btn of planner.querySelectorAll(".day-pick")) {
+      const isSelected = Number(btn.dataset.day) === day;
+      btn.classList.toggle("is-selected", isSelected);
+      btn.setAttribute("aria-pressed", String(isSelected));
+    }
+  }
+}
+
+function updateNote(placeId) {
+  if (editingNote === placeId) return; // ne pas écraser une saisie en cours
+
+  const wrap = document.querySelector(`.note[data-id="${placeId}"]`);
+  if (!wrap) return;
+
+  const text = noteState[placeId] || "";
+  const textEl = wrap.querySelector(".note-text");
+  const editBtn = wrap.querySelector(".note-edit");
+
+  wrap.querySelector(".note-form").hidden = true;
+  editBtn.hidden = false;
+
+  if (text) {
+    textEl.textContent = text;
+    textEl.hidden = false;
+    editBtn.textContent = "Modifier la note";
+  } else {
+    textEl.textContent = "";
+    textEl.hidden = true;
+    editBtn.textContent = "+ Note partagée";
+  }
+}
+
+function openNoteEditor(placeId) {
+  const wrap = document.querySelector(`.note[data-id="${placeId}"]`);
+  if (!wrap) return;
+
+  editingNote = placeId;
+  const input = wrap.querySelector(".note-input");
+  input.value = noteState[placeId] || "";
+  wrap.querySelector(".note-text").hidden = true;
+  wrap.querySelector(".note-edit").hidden = true;
+  wrap.querySelector(".note-form").hidden = false;
+  input.focus();
+}
+
+function closeNoteEditor(placeId) {
+  if (editingNote === placeId) editingNote = null;
+  updateNote(placeId);
+}
+
 function updateCardVisual(placeId, animate = false) {
   const isVisited = !!visitedState[placeId];
   const card = document.getElementById(`place-${placeId}`);
@@ -467,6 +615,36 @@ function initFirebase() {
         console.error("Erreur Firestore (réactions, lecture) :", error);
       }
     );
+
+    onSnapshot(
+      collection(db, PLANNING_COLLECTION),
+      (snapshot) => {
+        for (const change of snapshot.docChanges()) {
+          const raw = change.type === "removed" ? null : change.doc.data().day;
+          planState[change.doc.id] =
+            typeof raw === "number" && raw >= 1 && raw <= 5 ? raw : null;
+          updatePlanner(change.doc.id);
+        }
+        applyFilter(); // le filtre "par jour" dépend du planning
+      },
+      (error) => {
+        console.error("Erreur Firestore (planning, lecture) :", error);
+      }
+    );
+
+    onSnapshot(
+      collection(db, NOTES_COLLECTION),
+      (snapshot) => {
+        for (const change of snapshot.docChanges()) {
+          noteState[change.doc.id] =
+            change.type === "removed" ? "" : change.doc.data().text || "";
+          updateNote(change.doc.id);
+        }
+      },
+      (error) => {
+        console.error("Erreur Firestore (notes, lecture) :", error);
+      }
+    );
   } catch (error) {
     console.error("Erreur d'initialisation Firebase :", error);
     progressLabel.textContent =
@@ -500,6 +678,35 @@ function toggleReaction(placeId, emoji) {
     { merge: true }
   ).catch((error) => {
     console.error("Erreur Firestore (réaction) :", error);
+  });
+}
+
+function setDay(placeId, day) {
+  if (!db) return;
+  const current = planState[placeId] ?? null;
+  const next = current === day ? null : day;
+  if (next != null && "vibrate" in navigator) navigator.vibrate(15);
+  setDoc(
+    doc(db, PLANNING_COLLECTION, placeId),
+    { day: next, updatedAt: serverTimestamp() },
+    { merge: true }
+  ).catch((error) => {
+    console.error("Erreur Firestore (planning) :", error);
+  });
+}
+
+function saveNote(placeId, text) {
+  if (!db) return;
+  const clean = text.slice(0, NOTE_MAX);
+  editingNote = null;
+  noteState[placeId] = clean; // affichage optimiste
+  updateNote(placeId); // referme le formulaire tout de suite
+  setDoc(
+    doc(db, NOTES_COLLECTION, placeId),
+    { text: clean, updatedAt: serverTimestamp() },
+    { merge: true }
+  ).catch((error) => {
+    console.error("Erreur Firestore (note) :", error);
   });
 }
 

@@ -10,6 +10,15 @@ export const CATEGORIES = {
   musee: { label: "Musée", color: "#9b6fa3", icon: "🖼️" },
 };
 
+// Les 5 jours du séjour, pour le planner par jour.
+export const DAYS = [
+  { n: 1, label: "Jour 1", date: "mer. 7 oct." },
+  { n: 2, label: "Jour 2", date: "jeu. 8 oct." },
+  { n: 3, label: "Jour 3", date: "ven. 9 oct." },
+  { n: 4, label: "Jour 4", date: "sam. 10 oct." },
+  { n: 5, label: "Jour 5", date: "dim. 11 oct." },
+];
+
 export const PLACES = [
   {
     id: "parkside",
