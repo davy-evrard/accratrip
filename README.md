@@ -13,6 +13,7 @@ juste avec le lien.
 - **Données** : `js/data.js` (catégories, jours du séjour, lieux, à éditer directement)
 - **Temps réel partagé** : [Firebase Firestore](https://firebase.google.com/docs/firestore) (SDK JS, appelé directement depuis le navigateur - pas de serveur à maintenir) : statut "visité" du groupe, réactions emoji (🔥 ❤️ 👍), planning par jour, notes partagées par lieu (avec prénom de l'auteur) et une photo par lieu (redimensionnée côté client, stockée en data URL dans Firestore)
 - **Liste** : consultable par catégorie ou par jour du séjour ; bouton "Partager le carnet" (partage natif sur mobile, QR code sinon)
+- **Compte à rebours** : ticker jj:hh:mm:ss avant le départ, "Jour X / 5" pendant, puis un bilan chiffré du voyage (lieux visités, catégories bouclées, lieu le plus plébiscité, photos, notes) une fois le séjour terminé
 - **Hébergement** : GitHub Pages, branche `main`
 
 ## Structure du repo
