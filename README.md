@@ -11,7 +11,7 @@ juste avec le lien.
 
 - **Carte** : [Leaflet.js](https://leafletjs.com/) + fond de carte sombre [Esri](https://www.arcgis.com/) (Dark Gray Canvas, sans clé API)
 - **Données** : `js/data.js` (catégories + lieux, à éditer directement)
-- **Temps réel partagé** : [Firebase Firestore](https://firebase.google.com/docs/firestore) (SDK JS, appelé directement depuis le navigateur - pas de serveur à maintenir)
+- **Temps réel partagé** : [Firebase Firestore](https://firebase.google.com/docs/firestore) (SDK JS, appelé directement depuis le navigateur - pas de serveur à maintenir) : statut "visité" du groupe et réactions emoji par lieu (🔥 ❤️ 👍)
 - **Hébergement** : GitHub Pages, branche `main`
 
 ## Structure du repo
@@ -19,10 +19,10 @@ juste avec le lien.
 ```
 index.html          page unique
 css/style.css        tout le style
-js/data.js            catégories + lieux (id, nom, coordonnées, lien Maps, description)
+js/data.js            catégories (label, couleur, icône) + lieux (id, nom, coordonnées, lien Maps, description)
 js/firebase-config.js configuration du projet Firebase (à remplir, voir plus bas)
-js/app.js              carte, liste, filtres, synchronisation Firestore
-firestore.rules        règles de sécurité Firestore (à coller dans la console Firebase)
+js/app.js              carte, liste, filtres, réactions, synchronisation Firestore
+firestore.rules        règles de sécurité Firestore, collections "visited" et "reactions" (à coller dans la console Firebase)
 ```
 
 ## 1. Créer le projet Firebase
@@ -33,13 +33,16 @@ firestore.rules        règles de sécurité Firestore (à coller dans la consol
    - Démarre en **mode production** (on va poser nos propres règles juste après - pas besoin du mode test).
 3. Toujours dans Firestore, onglet **Règles**, remplace le contenu par celui du fichier [`firestore.rules`](./firestore.rules) de ce repo, puis **Publier**.
 
-   Ces règles ouvrent la lecture/écriture publique **uniquement** sur la
-   collection `visited`, et seulement pour des documents de la forme
-   `{ visited: bool, updatedAt: ... }`. C'est un compromis volontaire adapté
-   à un usage privé entre amis avec un lien non indexé - pas un site public
-   à grande audience. Aucune authentification, donc n'importe qui avec le
-   lien peut cocher/décocher un lieu ; c'est le but (voir la recommandation
-   plus bas si tu veux durcir un peu).
+   Ces règles ouvrent la lecture/écriture publique **uniquement** sur les
+   collections `visited` (documents `{ visited: bool, updatedAt: ... }`) et
+   `reactions` (documents `{ votes: { <idAppareil>: <emoji> }, updatedAt: ... }`),
+   et seulement pour des documents de cette forme. C'est un compromis
+   volontaire adapté à un usage privé entre amis avec un lien non indexé -
+   pas un site public à grande audience. Aucune authentification, donc
+   n'importe qui avec le lien peut cocher un lieu ou réagir ; c'est le but.
+   L'`idAppareil` est un identifiant aléatoire stocké dans le navigateur
+   (`localStorage`), juste pour qu'on puisse retirer sa propre réaction (voir
+   la recommandation plus bas si tu veux durcir un peu).
 
 4. Récupère la configuration du projet : **Paramètres du projet** (icône
    engrenage en haut à gauche) **> Général**, descends jusqu'à **Vos
@@ -124,13 +127,9 @@ site simple comme demandé :
   chaque lieu depuis la position actuelle (Google Maps `?daddr=`), une note
   libre par lieu (« on y va tel jour »), ou un tri « les plus proches de
   moi » via `navigator.geolocation` - utile en marchant dans Accra.
-- **Petit historique** : le champ `updatedAt` est déjà stocké mais pas
-  affiché ; un petit « visité le 12/10 » sous le lieu serait un ajout
-  mineur et sympa comme souvenir de voyage.
-- **Icônes de marqueurs plus lisibles** : les marqueurs sont actuellement de
-  simples ronds colorés ; à ce nombre de lieux ça reste lisible, mais des
-  icônes par catégorie (lit, monument, plage…) amélioreraient encore la
-  lecture de la carte si le groupe s'agrandit.
+- **Petit historique** : le champ `updatedAt` est déjà stocké (côté `visited`
+  comme `reactions`) mais pas affiché ; un petit « visité le 12/10 » sous le
+  lieu serait un ajout mineur et sympa comme souvenir de voyage.
 
 Aucune de ces pistes n'est nécessaire pour que le site fonctionne bien tel
 quel - à prendre si tu as envie de bricoler encore un peu avant octobre.

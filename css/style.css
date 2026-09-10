@@ -255,6 +255,32 @@ a {
   color: var(--text);
 }
 
+/* Marqueurs par catégorie (divIcon Leaflet) */
+.leaflet-div-icon.map-marker-wrap {
+  background: transparent;
+  border: 0;
+}
+
+.map-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  font-size: 15px;
+  line-height: 1;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 2.5px solid var(--accent, var(--border));
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+
+.map-marker.is-visited {
+  border-style: dashed;
+  opacity: 0.55;
+  filter: grayscale(0.5);
+}
+
 /* --- List --- */
 
 .place-list {
@@ -369,6 +395,56 @@ a {
 .locate-btn:hover {
   color: var(--text);
   border-color: var(--text-dim);
+}
+
+/* --- Réactions du groupe --- */
+
+.reactions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.8rem;
+}
+
+.reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.22rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-faint);
+  font-family: "Karla", sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.reaction .r-emoji {
+  font-size: 0.95rem;
+  filter: grayscale(0.4);
+  transition: filter 0.15s ease;
+}
+
+.reaction.has-votes {
+  color: var(--text-dim);
+}
+
+.reaction.has-votes .r-emoji {
+  filter: none;
+}
+
+.reaction.is-mine {
+  border-color: var(--accent, var(--text-dim));
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--text);
+}
+
+.reaction .r-count {
+  min-width: 0.8ch;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 /* --- Visited "stamp" toggle --- */
