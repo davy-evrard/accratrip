@@ -32,6 +32,10 @@
     personne qui ouvre ce lien peut cocher pour tout le monde.
   </p>
 
+  <p class="share-row">
+    <button type="button" class="share-btn" id="share-btn">🔗 Partager le carnet</button>
+  </p>
+
   <section class="progress" aria-live="polite">
     <div class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress-bar">
       <div class="progress-fill" id="progress-fill"></div>
@@ -53,16 +57,32 @@
 
   <div id="map" class="map" aria-label="Carte des lieux du séjour à Accra"></div>
 
-  <main id="list" class="place-list">
-    <!-- sections de catégories injectées en JS -->
+  <div class="group-toggle" id="group-toggle" role="group" aria-label="Organiser la liste">
+    <button type="button" data-group="category" class="is-active">Par catégorie</button>
+    <button type="button" data-group="day">Par jour</button>
+  </div>
+
+  <main id="list" class="place-list" data-group="category">
+    <!-- sections (catégories + jours) injectées en JS -->
   </main>
 
   <footer class="site-footer">
     <p>Bon voyage à Accra ✈️ - fait avec Leaflet, Esri &amp; Firebase.</p>
   </footer>
 
+  <dialog class="share-dialog" id="share-dialog">
+    <h2>Partager le carnet</h2>
+    <p class="share-hint">Fais scanner ce code, ou copie le lien.</p>
+    <div class="share-qr" id="share-qr" aria-hidden="true"></div>
+    <p class="share-url" id="share-url"></p>
+    <form method="dialog">
+      <button class="share-close">Fermer</button>
+    </form>
+  </dialog>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
+  <script src="js/vendor/qrcode.min.js"></script>
   <script type="module" src="js/app.js"></script>
 </body>
 </html>
