@@ -16,8 +16,10 @@ const VISITED_COLLECTION = "visited";
 const REACTIONS_COLLECTION = "reactions";
 const PLANNING_COLLECTION = "planning";
 const NOTES_COLLECTION = "notes";
+const PHOTOS_COLLECTION = "photos";
 const REACTIONS = ["🔥", "❤️", "👍"];
 const NOTE_MAX = 280;
+const PHOTO_MAX_CHARS = 380000; // ~275 Ko une fois décodé, sous la limite Firestore
 
 // --- État local -------------------------------------------------------
 
@@ -25,9 +27,11 @@ const visitedState = {}; // { [placeId]: boolean }
 const reactionState = {}; // { [placeId]: { [clientId]: emoji } }
 const planState = {}; // { [placeId]: 1..5 | null }
 const noteState = {}; // { [placeId]: { text, by, at: Date|null } }
+const photoState = {}; // { [placeId]: { dataUrl, by } }
 const markers = {}; // { [placeId]: L.Marker }
 let db = null;
 let editingNote = null; // placeId de la note en cours d'édition (sinon null)
+let uploadingPhotoFor = null; // placeId dont on choisit la photo (sinon null)
 
 // Identifiant d'appareil (pas de compte) : permet de retirer / changer sa
 // propre réaction sans authentification. Stocké localement uniquement.
@@ -420,6 +424,16 @@ function buildCard(place) {
       </button>
     </div>
     <p class="place-desc">${escapeHtml(place.description)}</p>
+    <div class="photo" data-id="${place.id}">
+      <button class="photo-add" data-id="${place.id}">+ Ajouter une photo</button>
+      <figure class="photo-fig" hidden>
+        <button class="photo-thumb" data-id="${place.id}" aria-label="Agrandir la photo">
+          <img alt="Photo de ${escapeHtml(place.name)}" />
+        </button>
+        <figcaption class="photo-cap" hidden></figcaption>
+        <button class="photo-remove" data-id="${place.id}">Retirer la photo</button>
+      </figure>
+    </div>
     <div class="card-actions">
       ${
         safeMapsUrl
@@ -582,11 +596,43 @@ listEl.addEventListener("click", (e) => {
     return;
   }
 
+  const photoAddBtn = e.target.closest(".photo-add");
+  if (photoAddBtn) {
+    uploadingPhotoFor = photoAddBtn.dataset.id;
+    photoInput.click();
+    return;
+  }
+
+  const photoThumb = e.target.closest(".photo-thumb");
+  if (photoThumb) {
+    openPhotoLightbox(photoThumb.dataset.id);
+    return;
+  }
+
+  const photoRemoveBtn = e.target.closest(".photo-remove");
+  if (photoRemoveBtn) {
+    if (window.confirm("Retirer cette photo ?")) {
+      removePhoto(photoRemoveBtn.dataset.id);
+    }
+    return;
+  }
+
   const visitedBtn = e.target.closest(".visited-toggle");
   if (visitedBtn) {
     toggleVisited(visitedBtn.dataset.id);
   }
 });
+
+const photoInput = document.getElementById("photo-input");
+if (photoInput) {
+  photoInput.addEventListener("change", () => {
+    const file = photoInput.files && photoInput.files[0];
+    const placeId = uploadingPhotoFor;
+    photoInput.value = "";
+    uploadingPhotoFor = null;
+    if (file && placeId) savePhotoFile(placeId, file);
+  });
+}
 
 // --- Progression --------------------------------------------------------------
 
@@ -744,6 +790,101 @@ function closeNoteEditor(placeId) {
   updateNote(placeId);
 }
 
+// --- Photos par lieu -----------------------------------------------
+
+function updatePhoto(placeId) {
+  const wrap = document.querySelector(`.photo[data-id="${placeId}"]`);
+  if (!wrap) return;
+
+  const p = photoState[placeId] || {};
+  const has = !!p.dataUrl;
+  wrap.querySelector(".photo-add").hidden = has;
+  wrap.querySelector(".photo-fig").hidden = !has;
+
+  if (has) {
+    wrap.querySelector(".photo-thumb img").src = p.dataUrl;
+    const cap = wrap.querySelector(".photo-cap");
+    cap.textContent = p.by ? `Ajoutée par ${p.by}` : "";
+    cap.hidden = !p.by;
+  }
+}
+
+function openPhotoLightbox(placeId) {
+  const p = photoState[placeId];
+  const dlg = document.getElementById("photo-dialog");
+  const img = document.getElementById("photo-full");
+  if (!p || !p.dataUrl || !dlg || !img || typeof dlg.showModal !== "function") {
+    return;
+  }
+  img.src = p.dataUrl;
+  dlg.showModal();
+}
+
+// Redimensionne un fichier image en data URL JPEG (côté client, pour rester
+// sous la limite de taille d'un document Firestore).
+function resizeImage(file, maxDim, quality) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width >= height && width > maxDim) {
+        height = Math.round((height * maxDim) / width);
+        width = maxDim;
+      } else if (height > maxDim) {
+        width = Math.round((width * maxDim) / height);
+        height = maxDim;
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("image illisible"));
+    };
+    img.src = url;
+  });
+}
+
+async function savePhotoFile(placeId, file) {
+  if (!db || !file) return;
+  try {
+    let dataUrl = await resizeImage(file, 1000, 0.7);
+    if (dataUrl.length > PHOTO_MAX_CHARS) {
+      dataUrl = await resizeImage(file, 800, 0.6);
+    }
+    if (dataUrl.length > PHOTO_MAX_CHARS) {
+      showToast("Photo trop lourde, essaie avec une image plus petite.");
+      return;
+    }
+    const by = ensureName();
+    await setDoc(
+      doc(db, PHOTOS_COLLECTION, placeId),
+      { dataUrl, by, updatedAt: serverTimestamp() },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error("Erreur photo :", error);
+    showWriteError(error);
+  }
+}
+
+function removePhoto(placeId) {
+  if (!db) return;
+  setDoc(
+    doc(db, PHOTOS_COLLECTION, placeId),
+    { dataUrl: "", by: "", updatedAt: serverTimestamp() },
+    { merge: true }
+  ).catch((error) => {
+    console.error("Erreur photo (retrait) :", error);
+    showWriteError(error);
+  });
+}
+
 function updateCardVisual(placeId, animate = false) {
   const isVisited = !!visitedState[placeId];
   const card = document.getElementById(`place-${placeId}`);
@@ -860,6 +1001,27 @@ function initFirebase() {
       },
       (error) => {
         console.error("Erreur Firestore (notes, lecture) :", error);
+      }
+    );
+
+    onSnapshot(
+      collection(db, PHOTOS_COLLECTION),
+      (snapshot) => {
+        for (const change of snapshot.docChanges()) {
+          if (change.type === "removed") {
+            photoState[change.doc.id] = {};
+          } else {
+            const d = change.doc.data();
+            photoState[change.doc.id] = {
+              dataUrl: d.dataUrl || "",
+              by: d.by || "",
+            };
+          }
+          updatePhoto(change.doc.id);
+        }
+      },
+      (error) => {
+        console.error("Erreur Firestore (photos, lecture) :", error);
       }
     );
   } catch (error) {

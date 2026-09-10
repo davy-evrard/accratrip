@@ -80,6 +80,15 @@
     </form>
   </dialog>
 
+  <input type="file" id="photo-input" accept="image/*" hidden />
+
+  <dialog class="photo-dialog" id="photo-dialog">
+    <img id="photo-full" alt="Photo du lieu" />
+    <form method="dialog">
+      <button class="share-close">Fermer</button>
+    </form>
+  </dialog>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
   <script src="js/vendor/qrcode.min.js"></script>

@@ -11,7 +11,7 @@ juste avec le lien.
 
 - **Carte** : [Leaflet.js](https://leafletjs.com/) + fond de carte sombre [Esri](https://www.arcgis.com/) (Dark Gray Canvas, sans clé API)
 - **Données** : `js/data.js` (catégories, jours du séjour, lieux, à éditer directement)
-- **Temps réel partagé** : [Firebase Firestore](https://firebase.google.com/docs/firestore) (SDK JS, appelé directement depuis le navigateur - pas de serveur à maintenir) : statut "visité" du groupe, réactions emoji (🔥 ❤️ 👍), planning par jour et notes partagées par lieu (avec prénom de l'auteur)
+- **Temps réel partagé** : [Firebase Firestore](https://firebase.google.com/docs/firestore) (SDK JS, appelé directement depuis le navigateur - pas de serveur à maintenir) : statut "visité" du groupe, réactions emoji (🔥 ❤️ 👍), planning par jour, notes partagées par lieu (avec prénom de l'auteur) et une photo par lieu (redimensionnée côté client, stockée en data URL dans Firestore)
 - **Liste** : consultable par catégorie ou par jour du séjour ; bouton "Partager le carnet" (partage natif sur mobile, QR code sinon)
 - **Hébergement** : GitHub Pages, branche `main`
 
@@ -22,9 +22,9 @@ index.html            page unique
 css/style.css          tout le style
 js/data.js              catégories (label, couleur, icône), jours du séjour, lieux (id, nom, coordonnées, lien Maps, description)
 js/firebase-config.js   configuration du projet Firebase (à remplir, voir plus bas)
-js/app.js               carte, liste, filtres, réactions, planning, notes, partage, synchronisation Firestore
+js/app.js               carte, liste, filtres, réactions, planning, notes, photos, partage, synchronisation Firestore
 js/vendor/qrcode.min.js encodeur QR (qrcode-generator, MIT), utilisé pour le partage
-firestore.rules          règles de sécurité Firestore, collections "visited", "reactions", "planning" et "notes" (à coller dans la console Firebase)
+firestore.rules          règles de sécurité Firestore, collections "visited", "reactions", "planning", "notes" et "photos" (à coller dans la console Firebase)
 ```
 
 ## 1. Créer le projet Firebase
@@ -35,20 +35,21 @@ firestore.rules          règles de sécurité Firestore, collections "visited",
    - Démarre en **mode production** (on va poser nos propres règles juste après - pas besoin du mode test).
 3. Toujours dans Firestore, onglet **Règles**, remplace le contenu par celui du fichier [`firestore.rules`](./firestore.rules) de ce repo, puis **Publier**.
 
-   Ces règles ouvrent la lecture/écriture publique **uniquement** sur quatre
+   Ces règles ouvrent la lecture/écriture publique **uniquement** sur cinq
    collections, et seulement pour des documents de la forme attendue :
    `visited` (`{ visited: bool, updatedAt }`), `reactions`
    (`{ votes: { <idAppareil>: <emoji> }, updatedAt }`), `planning`
-   (`{ day: 1..5 ou null, updatedAt }`) et `notes`
-   (`{ text: <string, 280 max>, by: <string, 40 max>, updatedAt }`). C'est un
-   compromis volontaire adapté à un usage privé entre amis avec un lien non
-   indexé - pas un site public à grande audience. Aucune authentification,
-   donc n'importe qui avec le lien peut cocher un lieu, réagir, planifier ou
-   écrire une note ; c'est le but. L'`idAppareil` est un identifiant aléatoire
-   stocké dans le navigateur (`localStorage`), juste pour qu'on puisse retirer
-   sa propre réaction ; le `by` des notes est un prénom saisi une fois et
-   gardé en `localStorage` (voir la recommandation plus bas si tu veux durcir
-   un peu).
+   (`{ day: 1..5 ou null, updatedAt }`), `notes`
+   (`{ text: <string, 280 max>, by: <string, 40 max>, updatedAt }`) et
+   `photos` (`{ dataUrl: <string, 400 000 max>, by: <string, 40 max>, updatedAt }`).
+   C'est un compromis volontaire adapté à un usage privé entre amis avec un
+   lien non indexé - pas un site public à grande audience. Aucune
+   authentification, donc n'importe qui avec le lien peut cocher un lieu,
+   réagir, planifier, écrire une note ou ajouter une photo ; c'est le but.
+   L'`idAppareil` est un identifiant aléatoire stocké dans le navigateur
+   (`localStorage`), juste pour qu'on puisse retirer sa propre réaction ; le
+   `by` des notes et des photos est un prénom saisi une fois et gardé en
+   `localStorage` (voir la recommandation plus bas si tu veux durcir un peu).
 
 4. Récupère la configuration du projet : **Paramètres du projet** (icône
    engrenage en haut à gauche) **> Général**, descends jusqu'à **Vos
@@ -130,11 +131,13 @@ site simple comme demandé :
   Firebase** (`signInAnonymously`) combinée à un champ `updatedBy` dans les
   règles - invisible pour les utilisateurs, mais ça donne une trace et
   permet de limiter le débit d'écriture par utilisateur si besoin.
-- **Plus proches de moi** : un tri par distance via `navigator.geolocation`,
-  avec un point « vous êtes ici » sur la carte - utile en marchant dans Accra.
-- **Petit historique** : les notes affichent déjà auteur + « il y a 2 h » ;
-  on pourrait faire pareil pour « visité le 12/10 » sous le lieu, comme
-  souvenir de voyage.
+- **Photos plus légères** : chaque photo est redimensionnée côté client et
+  stockée en data URL dans Firestore (~150 à 275 Ko), et tout est chargé au
+  démarrage. Si le groupe met beaucoup de photos, passer à Firebase Storage
+  (upload + URL, chargement à la demande) allègerait la bande passante mobile.
+- **Petit historique** : les notes et les photos affichent déjà auteur +
+  « il y a 2 h » ; on pourrait faire pareil pour « visité le 12/10 » sous le
+  lieu, comme souvenir de voyage.
 
 Aucune de ces pistes n'est nécessaire pour que le site fonctionne bien tel
 quel - à prendre si tu as envie de bricoler encore un peu avant octobre.
