@@ -6,27 +6,42 @@ et suivi partagé en temps réel de ce qui a déjà été visité - sans compte,
 juste avec le lien.
 
 100 % HTML/CSS/JS natif, aucun build. Hébergeable tel quel sur GitHub Pages.
+Installable et utilisable hors-ligne (PWA).
 
 ## Stack
 
-- **Carte** : [Leaflet.js](https://leafletjs.com/) + fond de carte sombre [Esri](https://www.arcgis.com/) (Dark Gray Canvas, sans clé API)
+- **Carte** : [Leaflet.js](https://leafletjs.com/) 1.9.4 + [Leaflet.markercluster](https://github.com/Leaflet/Leaflet.markercluster) 1.5.3 (vendorés dans `js/vendor/`) + fond de carte sombre [Esri](https://www.arcgis.com/) (Dark Gray Canvas, sans clé API)
 - **Données** : `js/data.js` (catégories, jours du séjour, lieux, à éditer directement)
 - **Temps réel partagé** : [Firebase Firestore](https://firebase.google.com/docs/firestore) (SDK JS, appelé directement depuis le navigateur - pas de serveur à maintenir) : statut "visité" du groupe, réactions emoji (🔥 ❤️ 👍), planning par jour, notes partagées par lieu (avec prénom de l'auteur) et une photo par lieu (redimensionnée côté client, stockée en data URL dans Firestore)
 - **Liste** : consultable par catégorie ou par jour du séjour ; bouton "Partager le carnet" (partage natif sur mobile, QR code sinon)
 - **Compte à rebours** : ticker jj:hh:mm:ss avant le départ, "Jour X / 5" pendant, puis un bilan chiffré du voyage (lieux visités, catégories bouclées, lieu le plus plébiscité, photos, notes) une fois le séjour terminé
+- **Hors-ligne** : `sw.js` (service worker) met en cache l'app, les polices et les tuiles déjà vues ; Firestore garde un cache local persistant (`persistentLocalCache`) donc les données déjà chargées restent lisibles sans réseau et se resynchronisent au retour. `manifest.webmanifest` rend le site installable sur l'écran d'accueil.
 - **Hébergement** : GitHub Pages, branche `main`
 
 ## Structure du repo
 
 ```
-index.html            page unique
-css/style.css          tout le style
-js/data.js              catégories (label, couleur, icône), jours du séjour, lieux (id, nom, coordonnées, lien Maps, description)
-js/firebase-config.js   configuration du projet Firebase (à remplir, voir plus bas)
-js/app.js               carte, liste, filtres, réactions, planning, notes, photos, partage, synchronisation Firestore
-js/vendor/qrcode.min.js encodeur QR (qrcode-generator, MIT), utilisé pour le partage
-firestore.rules          règles de sécurité Firestore, collections "visited", "reactions", "planning", "notes" et "photos" (à coller dans la console Firebase)
+index.html              page unique
+css/style.css            tout le style
+sw.js                    service worker (cache hors-ligne)
+manifest.webmanifest     manifeste PWA (site installable)
+icons/                   icônes de l'app (192, 512)
+js/data.js                catégories (label, couleur, icône), jours du séjour, lieux (id, nom, coordonnées, lien Maps, description)
+js/firebase-config.js     configuration du projet Firebase (à remplir, voir plus bas)
+js/app.js                 carte, liste, filtres, réactions, planning, notes, photos, partage, synchronisation Firestore
+js/vendor/qrcode.min.js   encodeur QR (qrcode-generator, MIT), utilisé pour le partage
+js/vendor/leaflet/        Leaflet vendoré (BSD-2)
+js/vendor/markercluster/  Leaflet.markercluster vendoré (MIT)
+firestore.rules            règles de sécurité Firestore, collections "visited", "reactions", "planning", "notes" et "photos" (à coller dans la console Firebase)
 ```
+
+## Mettre à jour le cache hors-ligne
+
+Le service worker fonctionne en "réseau d'abord" : en ligne, tu as toujours la
+dernière version ; hors-ligne, la dernière version vue. À chaque déploiement
+qui change des fichiers de l'app, bumper `CACHE_VERSION` dans [`sw.js`](./sw.js)
+(`"v1"` -> `"v2"`, ...) pour purger proprement l'ancien cache au prochain
+chargement.
 
 ## 1. Créer le projet Firebase
 
@@ -120,12 +135,10 @@ pas de lien Google Maps.
 Quelques pistes pour aller plus loin, non implémentées ici pour garder le
 site simple comme demandé :
 
-- **Mode hors-ligne / mauvais réseau** : sur place, la connexion peut être
-  instable. Firestore fait déjà du cache local par défaut (les lectures/
-  écritures fonctionnent offline et se resynchronisent), mais tu peux
-  ajouter un [service worker](https://developer.mozilla.org/fr/docs/Web/API/Service_Worker_API)
-  ou `IndexedDB persistence` explicite pour fiabiliser encore l'usage sans
-  réseau (fréquent en déplacement).
+- **Cache hors-ligne plus fin** : le service worker met en cache l'app et les
+  tuiles déjà vues. On pourrait pré-charger une zone de tuiles au premier
+  lancement (pour avoir toute la carte d'Accra dispo sans réseau) et exposer
+  un bouton "vider le cache".
 - **Anti-abus léger** : les règles actuelles sont volontairement ouvertes.
   Si tu veux limiter les écritures à des personnes du groupe sans mettre en
   place de vrais comptes, une option simple est l'**auth anonyme

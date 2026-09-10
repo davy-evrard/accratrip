@@ -3,7 +3,9 @@ import { firebaseConfig } from "./firebase-config.js";
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
 import {
-  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   collection,
   doc,
   setDoc,
@@ -976,7 +978,14 @@ function initFirebase() {
 
   try {
     const app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
+    // Cache local persistant (IndexedDB) : les données déjà vues restent
+    // lisibles hors-ligne et les écritures se resynchronisent au retour du
+    // réseau.
+    db = initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+      }),
+    });
 
     let firstSnapshot = true;
 
@@ -1233,3 +1242,10 @@ window.setInterval(updateCountdown, 1000);
 selectInitialDay();
 window.setTimeout(openFromHash, 200);
 window.addEventListener("hashchange", openFromHash);
+
+// Service worker : cache de l'app pour un usage hors-ligne.
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker
+    .register("sw.js")
+    .catch((error) => console.warn("Service worker non enregistré :", error));
+}
