@@ -1,0 +1,21 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Un document par lieu, uniquement dans la collection "visited".
+    // Accès public en lecture/écriture (pas de compte utilisateur), mais
+    // on limite strictement la forme des documents pour éviter qu'un lien
+    // partagé ne serve à écrire n'importe quoi dans la base.
+    match /visited/{placeId} {
+      allow read: if true;
+      allow write: if request.resource.data.keys().hasOnly(['visited', 'updatedAt'])
+                   && request.resource.data.visited is bool;
+    }
+
+    // Tout le reste de la base est fermé par défaut.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
