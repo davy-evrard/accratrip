@@ -138,6 +138,8 @@ function updateCountdown() {
 
 function flyToPlace(place) {
   if (place.lat == null || place.lng == null) return;
+  const mapEl = document.getElementById("map");
+  if (mapEl) mapEl.scrollIntoView({ behavior: "smooth", block: "start" });
   map.flyTo([place.lat, place.lng], 15, { duration: 0.6 });
   const marker = markers[place.id];
   if (marker) marker.openPopup();
@@ -208,7 +210,7 @@ filtersEl.addEventListener("click", (e) => {
   for (const chip of filtersEl.querySelectorAll(".filter-chip")) {
     chip.classList.toggle("is-active", chip === btn);
   }
-  applyFilter();
+  applyFilter({ fit: true });
 });
 
 dayFiltersEl.addEventListener("click", (e) => {
@@ -218,10 +220,12 @@ dayFiltersEl.addEventListener("click", (e) => {
   for (const chip of dayFiltersEl.querySelectorAll(".filter-chip")) {
     chip.classList.toggle("is-active", chip === btn);
   }
-  applyFilter();
+  applyFilter({ fit: true });
 });
 
-function applyFilter() {
+function applyFilter({ fit = false } = {}) {
+  const visiblePoints = [];
+
   for (const place of PLACES) {
     const catOk = activeCategory === "all" || place.category === activeCategory;
     const day = planState[place.id] ?? null;
@@ -240,12 +244,25 @@ function applyFilter() {
         updateMarkerVisual(place.id); // le marqueur re-ajouté a un DOM neuf
       }
       if (!visible && map.hasLayer(marker)) map.removeLayer(marker);
+      if (visible && place.lat != null && place.lng != null) {
+        visiblePoints.push([place.lat, place.lng]);
+      }
     }
   }
 
   for (const section of document.querySelectorAll(".category-section")) {
     const anyVisible = section.querySelector(".place-card:not([hidden])");
     section.hidden = !anyVisible;
+  }
+
+  if (fit && visiblePoints.length === 1) {
+    map.flyTo(visiblePoints[0], 14, { duration: 0.5 });
+  } else if (fit && visiblePoints.length > 1) {
+    map.flyToBounds(visiblePoints, {
+      padding: [40, 40],
+      maxZoom: 15,
+      duration: 0.5,
+    });
   }
 }
 

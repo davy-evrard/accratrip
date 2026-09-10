@@ -164,12 +164,11 @@ export const PLACES = [
     id: "ecopark",
     name: "Eco Park (Aburi)",
     category: "aburi",
-    lat: 5.8348125,
-    lng: -0.2586875,
-    approx: true,
-    mapsUrl: "https://maps.google.com/?cid=1211995787067304236",
+    lat: 6.0055904,
+    lng: -0.2565503,
+    mapsUrl: "https://maps.google.com/?q=6.0055904,-0.2565503",
     description:
-      "Un parc nature proche d'Aburi, pensé pour les activités en plein air. Position approximative sur la carte - on affinera sur place.",
+      "Un parc nature proche d'Aburi, pensé pour les activités en plein air.",
   },
   {
     id: "despite",
