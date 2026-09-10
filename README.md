@@ -10,8 +10,8 @@ juste avec le lien.
 ## Stack
 
 - **Carte** : [Leaflet.js](https://leafletjs.com/) + fond de carte sombre [Esri](https://www.arcgis.com/) (Dark Gray Canvas, sans clé API)
-- **Données** : `js/data.js` (catégories + lieux, à éditer directement)
-- **Temps réel partagé** : [Firebase Firestore](https://firebase.google.com/docs/firestore) (SDK JS, appelé directement depuis le navigateur - pas de serveur à maintenir) : statut "visité" du groupe et réactions emoji par lieu (🔥 ❤️ 👍)
+- **Données** : `js/data.js` (catégories, jours du séjour, lieux, à éditer directement)
+- **Temps réel partagé** : [Firebase Firestore](https://firebase.google.com/docs/firestore) (SDK JS, appelé directement depuis le navigateur - pas de serveur à maintenir) : statut "visité" du groupe, réactions emoji (🔥 ❤️ 👍), planning par jour et notes partagées par lieu
 - **Hébergement** : GitHub Pages, branche `main`
 
 ## Structure du repo
@@ -19,10 +19,10 @@ juste avec le lien.
 ```
 index.html          page unique
 css/style.css        tout le style
-js/data.js            catégories (label, couleur, icône) + lieux (id, nom, coordonnées, lien Maps, description)
+js/data.js            catégories (label, couleur, icône), jours du séjour, lieux (id, nom, coordonnées, lien Maps, description)
 js/firebase-config.js configuration du projet Firebase (à remplir, voir plus bas)
-js/app.js              carte, liste, filtres, réactions, synchronisation Firestore
-firestore.rules        règles de sécurité Firestore, collections "visited" et "reactions" (à coller dans la console Firebase)
+js/app.js              carte, liste, filtres, réactions, planning, notes, synchronisation Firestore
+firestore.rules        règles de sécurité Firestore, collections "visited", "reactions", "planning" et "notes" (à coller dans la console Firebase)
 ```
 
 ## 1. Créer le projet Firebase
@@ -33,16 +33,18 @@ firestore.rules        règles de sécurité Firestore, collections "visited" et
    - Démarre en **mode production** (on va poser nos propres règles juste après - pas besoin du mode test).
 3. Toujours dans Firestore, onglet **Règles**, remplace le contenu par celui du fichier [`firestore.rules`](./firestore.rules) de ce repo, puis **Publier**.
 
-   Ces règles ouvrent la lecture/écriture publique **uniquement** sur les
-   collections `visited` (documents `{ visited: bool, updatedAt: ... }`) et
-   `reactions` (documents `{ votes: { <idAppareil>: <emoji> }, updatedAt: ... }`),
-   et seulement pour des documents de cette forme. C'est un compromis
-   volontaire adapté à un usage privé entre amis avec un lien non indexé -
-   pas un site public à grande audience. Aucune authentification, donc
-   n'importe qui avec le lien peut cocher un lieu ou réagir ; c'est le but.
-   L'`idAppareil` est un identifiant aléatoire stocké dans le navigateur
-   (`localStorage`), juste pour qu'on puisse retirer sa propre réaction (voir
-   la recommandation plus bas si tu veux durcir un peu).
+   Ces règles ouvrent la lecture/écriture publique **uniquement** sur quatre
+   collections, et seulement pour des documents de la forme attendue :
+   `visited` (`{ visited: bool, updatedAt }`), `reactions`
+   (`{ votes: { <idAppareil>: <emoji> }, updatedAt }`), `planning`
+   (`{ day: 1..5 ou null, updatedAt }`) et `notes`
+   (`{ text: <string, 280 max>, updatedAt }`). C'est un compromis volontaire
+   adapté à un usage privé entre amis avec un lien non indexé - pas un site
+   public à grande audience. Aucune authentification, donc n'importe qui avec
+   le lien peut cocher un lieu, réagir, planifier ou écrire une note ; c'est
+   le but. L'`idAppareil` est un identifiant aléatoire stocké dans le
+   navigateur (`localStorage`), juste pour qu'on puisse retirer sa propre
+   réaction (voir la recommandation plus bas si tu veux durcir un peu).
 
 4. Récupère la configuration du projet : **Paramètres du projet** (icône
    engrenage en haut à gauche) **> Général**, descends jusqu'à **Vos
@@ -96,11 +98,12 @@ python3 -m http.server 8000
 
 ## Modifier les lieux
 
-Tout se passe dans [`js/data.js`](./js/data.js) : `CATEGORIES` (label +
-couleur) et `PLACES` (un objet par lieu). Ajouter, retirer ou modifier un
-lieu là-bas suffit - la carte, la liste, les filtres et le compteur de
-progression s'adaptent automatiquement (le total du compteur est calculé
-dynamiquement à partir du nombre de lieux, pas codé en dur).
+Tout se passe dans [`js/data.js`](./js/data.js) : `CATEGORIES` (label,
+couleur, icône), `DAYS` (les 5 jours du séjour, pour le planner) et `PLACES`
+(un objet par lieu). Ajouter, retirer ou modifier un lieu là-bas suffit - la
+carte, la liste, les filtres et le compteur de progression s'adaptent
+automatiquement (le total du compteur est calculé dynamiquement à partir du
+nombre de lieux, pas codé en dur).
 
 Un lieu sans `lat`/`lng` (ex. `chrismaison`, adresse privée) n'a simplement
 pas de marqueur sur la carte ni de bouton « Localiser » ; un lieu sans
@@ -124,12 +127,12 @@ site simple comme demandé :
   règles - invisible pour les utilisateurs, mais ça donne une trace et
   permet de limiter le débit d'écriture par utilisateur si besoin.
 - **Petites touches pratiques pour le séjour** : un lien « Itinéraire » vers
-  chaque lieu depuis la position actuelle (Google Maps `?daddr=`), une note
-  libre par lieu (« on y va tel jour »), ou un tri « les plus proches de
-  moi » via `navigator.geolocation` - utile en marchant dans Accra.
-- **Petit historique** : le champ `updatedAt` est déjà stocké (côté `visited`
-  comme `reactions`) mais pas affiché ; un petit « visité le 12/10 » sous le
-  lieu serait un ajout mineur et sympa comme souvenir de voyage.
+  chaque lieu depuis la position actuelle (Google Maps `?daddr=`), ou un tri
+  « les plus proches de moi » via `navigator.geolocation` - utile en marchant
+  dans Accra.
+- **Petit historique** : le champ `updatedAt` est stocké sur toutes les
+  collections mais pas affiché ; un petit « visité le 12/10 » sous le lieu
+  serait un ajout mineur et sympa comme souvenir de voyage.
 
 Aucune de ces pistes n'est nécessaire pour que le site fonctionne bien tel
 quel - à prendre si tu as envie de bricoler encore un peu avant octobre.

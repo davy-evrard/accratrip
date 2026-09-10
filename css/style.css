@@ -19,6 +19,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 html {
   color-scheme: dark;
 }
@@ -208,6 +212,17 @@ a {
   overflow-x: auto;
   padding: 0 1.25rem 1rem;
   scrollbar-width: none;
+}
+
+.filters--day {
+  padding-top: 0;
+  padding-bottom: 1rem;
+}
+
+.filters--day .filter-chip {
+  font-size: 0.76rem;
+  padding: 0.36rem 0.75rem;
+  color: var(--text-faint);
 }
 
 .filters::-webkit-scrollbar {
@@ -445,6 +460,150 @@ a {
   min-width: 0.8ch;
   text-align: center;
   font-variant-numeric: tabular-nums;
+}
+
+/* --- Planner par jour --- */
+
+.day-badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+  padding: 0.06rem 0.42rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  font-family: "Karla", sans-serif;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--accent, var(--text-dim));
+}
+
+.planner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+}
+
+.planner-label {
+  margin-right: 0.15rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+
+.day-pick {
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  font-family: "Karla", sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.day-pick:hover {
+  border-color: var(--text-dim);
+  color: var(--text);
+}
+
+.day-pick.is-selected {
+  background: var(--accent, var(--text));
+  border-color: var(--accent, var(--text));
+  color: #14181c;
+}
+
+/* --- Note partagée --- */
+
+.note {
+  margin-top: 0.75rem;
+}
+
+.note-text {
+  margin: 0 0 0.4rem;
+  padding: 0.5rem 0.65rem;
+  border-left: 2px solid color-mix(in srgb, var(--accent) 55%, var(--border));
+  border-radius: 0 6px 6px 0;
+  background: var(--bg-elevated);
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.note-edit {
+  padding: 0.28rem 0.65rem;
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-faint);
+  font-family: "Karla", sans-serif;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.note-edit:hover {
+  color: var(--text-dim);
+  border-color: var(--text-dim);
+}
+
+.note-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.note-input {
+  width: 100%;
+  resize: vertical;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Karla", system-ui, sans-serif;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.note-input:focus {
+  outline: none;
+  border-color: var(--accent, var(--text-dim));
+}
+
+.note-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.note-form-actions button {
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  font-family: "Karla", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.note-cancel {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+}
+
+.note-save {
+  border: 1px solid var(--accent, var(--text));
+  background: var(--accent, var(--text));
+  color: #14181c;
 }
 
 /* --- Visited "stamp" toggle --- */

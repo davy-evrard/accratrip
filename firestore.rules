@@ -23,6 +23,24 @@ service cloud.firestore {
                    && request.resource.data.votes is map;
     }
 
+    // Planning par jour : { day: 1..5 ou null, updatedAt: ... }.
+    match /planning/{placeId} {
+      allow read: if true;
+      allow write: if request.resource.data.keys().hasOnly(['day', 'updatedAt'])
+                   && (request.resource.data.day == null
+                       || (request.resource.data.day is int
+                           && request.resource.data.day >= 1
+                           && request.resource.data.day <= 5));
+    }
+
+    // Notes libres partagées : { text: <string, 280 max>, updatedAt: ... }.
+    match /notes/{placeId} {
+      allow read: if true;
+      allow write: if request.resource.data.keys().hasOnly(['text', 'updatedAt'])
+                   && request.resource.data.text is string
+                   && request.resource.data.text.size() <= 280;
+    }
+
     // Tout le reste de la base est fermé par défaut.
     match /{document=**} {
       allow read, write: if false;
