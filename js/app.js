@@ -168,6 +168,14 @@ function renderTicker(el, ms) {
   );
 }
 
+// Numéro de jour du séjour (1..5) si on est pendant le voyage, sinon null.
+function currentTripDay() {
+  const now = new Date();
+  if (now < TRIP_START || now > TRIP_END) return null;
+  const n = Math.floor((now - TRIP_START) / MS_PER_DAY) + 1;
+  return Math.min(Math.max(n, 1), TRIP_DAYS);
+}
+
 function updateCountdown() {
   const el = document.getElementById("countdown");
   if (!el) return;
@@ -179,8 +187,7 @@ function updateCountdown() {
   } else if (now <= TRIP_END) {
     el.dataset.phase = "during";
     el.classList.remove("has-ticker");
-    const dayNum = Math.floor((now - TRIP_START) / MS_PER_DAY) + 1;
-    el.textContent = `Jour ${dayNum} / ${TRIP_DAYS} à Accra`;
+    el.textContent = `Jour ${currentTripDay()} / ${TRIP_DAYS} à Accra`;
   } else {
     el.dataset.phase = "after";
     el.classList.remove("has-ticker");
@@ -188,10 +195,12 @@ function updateCountdown() {
   }
 }
 
-function flyToPlace(place) {
+function flyToPlace(place, { scrollToMap = true } = {}) {
   if (place.lat == null || place.lng == null) return;
-  const mapEl = document.getElementById("map");
-  if (mapEl) mapEl.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (scrollToMap) {
+    const mapEl = document.getElementById("map");
+    if (mapEl) mapEl.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   const marker = markers[place.id];
   if (marker && markerLayer.hasLayer(marker)) {
@@ -382,7 +391,10 @@ function buildCard(place) {
       }
       ${
         hasLocation
-          ? `<button class="locate-btn" data-id="${place.id}">Localiser sur la carte</button>`
+          ? `<span class="card-tools">
+        <a class="route-link" href="https://www.google.com/maps/dir/?api=1&amp;destination=${place.lat},${place.lng}" target="_blank" rel="noopener">Itinéraire ↗</a>
+        <button class="locate-btn" data-id="${place.id}">Localiser sur la carte</button>
+      </span>`
           : ""
       }
     </div>
@@ -441,7 +453,12 @@ listEl.addEventListener("click", (e) => {
   const locateBtn = e.target.closest(".locate-btn");
   if (locateBtn) {
     const place = PLACES.find((p) => p.id === locateBtn.dataset.id);
-    if (place) flyToPlace(place);
+    if (place) {
+      // URL partageable qui pointe sur ce lieu (#place-xxx), sans polluer
+      // l'historique.
+      history.replaceState(null, "", `#place-${place.id}`);
+      flyToPlace(place);
+    }
     return;
   }
 
@@ -811,7 +828,42 @@ function saveNote(placeId, text) {
   });
 }
 
+function placeFromHash() {
+  const raw = location.hash.replace(/^#(place-)?/, "");
+  return raw ? PLACES.find((p) => p.id === raw) || null : null;
+}
+
+// Pendant le voyage, on ouvre par défaut le filtre du jour courant - sauf
+// si l'URL pointe déjà sur un lieu précis (le deep-link a la priorité).
+function selectInitialDay() {
+  const todayN = currentTripDay();
+  if (todayN == null || placeFromHash()) return;
+  const chip = dayFiltersEl.querySelector(
+    `.filter-chip[data-day="${todayN}"]`
+  );
+  if (!chip) return;
+  activeDay = String(todayN);
+  for (const c of dayFiltersEl.querySelectorAll(".filter-chip")) {
+    c.classList.toggle("is-active", c === chip);
+  }
+  dayFiltersEl.scrollLeft =
+    chip.offsetLeft - dayFiltersEl.clientWidth / 2 + chip.clientWidth / 2;
+  applyFilter({ fit: true });
+}
+
+// Deep-link : #place-<id> (ou #<id>) ouvre le lieu au chargement / au
+// changement de hash.
+function openFromHash() {
+  const place = placeFromHash();
+  if (!place) return;
+  highlightCard(place.id);
+  flyToPlace(place, { scrollToMap: false });
+}
+
 initFirebase();
 updateProgress();
 updateCountdown();
 window.setInterval(updateCountdown, 1000);
+selectInitialDay();
+window.setTimeout(openFromHash, 200);
+window.addEventListener("hashchange", openFromHash);
