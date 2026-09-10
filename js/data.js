@@ -3,11 +3,11 @@
 // partie du code n'a besoin d'être touchée.
 
 export const CATEGORIES = {
-  logement: { label: "Logement", color: "#c9a227" },
-  centre: { label: "Centre-ville & culture", color: "#c1543c" },
-  sorties: { label: "Sorties, shopping & bord de mer", color: "#3a9298" },
-  aburi: { label: "Excursion à Aburi", color: "#5c9468" },
-  musee: { label: "Musée", color: "#9b6fa3" },
+  logement: { label: "Logement", color: "#c9a227", icon: "🛏️" },
+  centre: { label: "Centre-ville & culture", color: "#c1543c", icon: "🏛️" },
+  sorties: { label: "Sorties, shopping & bord de mer", color: "#3a9298", icon: "🏖️" },
+  aburi: { label: "Excursion à Aburi", color: "#5c9468", icon: "🌳" },
+  musee: { label: "Musée", color: "#9b6fa3", icon: "🖼️" },
 };
 
 export const PLACES = [

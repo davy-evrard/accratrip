@@ -9,15 +9,38 @@ import {
   setDoc,
   onSnapshot,
   serverTimestamp,
+  deleteField,
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
 const VISITED_COLLECTION = "visited";
+const REACTIONS_COLLECTION = "reactions";
+const REACTIONS = ["🔥", "❤️", "👍"];
 
 // --- État local -------------------------------------------------------
 
 const visitedState = {}; // { [placeId]: boolean }
-const markers = {}; // { [placeId]: L.CircleMarker }
+const reactionState = {}; // { [placeId]: { [clientId]: emoji } }
+const markers = {}; // { [placeId]: L.Marker }
 let db = null;
+
+// Identifiant d'appareil (pas de compte) : permet de retirer / changer sa
+// propre réaction sans authentification. Stocké localement uniquement.
+const clientId = getClientId();
+
+function getClientId() {
+  try {
+    let id = localStorage.getItem("accratrip-client");
+    if (!id) {
+      id =
+        (crypto.randomUUID && crypto.randomUUID()) ||
+        `c-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      localStorage.setItem("accratrip-client", id);
+    }
+    return id;
+  } catch {
+    return `c-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+}
 
 // --- Carte --------------------------------------------------------------
 
@@ -124,18 +147,20 @@ function highlightCard(placeId) {
 
 for (const place of PLACES) {
   if (place.lat == null || place.lng == null) continue;
-  const accent = CATEGORIES[place.category].color;
-  const marker = L.circleMarker([place.lat, place.lng], {
-    radius: 9,
-    weight: 2,
-    color: "#14181c",
-    fillColor: accent,
-    fillOpacity: 0.95,
+  const cat = CATEGORIES[place.category];
+  const icon = L.divIcon({
+    className: "map-marker-wrap",
+    html: `<span class="map-marker" style="--accent:${cat.color}">${cat.icon}</span>`,
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
+    popupAnchor: [0, -14],
+  });
+  const marker = L.marker([place.lat, place.lng], {
+    icon,
+    keyboard: false,
   }).addTo(map);
   marker.bindPopup(
-    `<strong>${escapeHtml(place.name)}</strong><br>${escapeHtml(
-      CATEGORIES[place.category].label
-    )}`
+    `<strong>${escapeHtml(place.name)}</strong><br>${escapeHtml(cat.label)}`
   );
   marker.on("click", () => highlightCard(place.id));
   markers[place.id] = marker;
@@ -151,7 +176,7 @@ for (const [key, cat] of Object.entries(CATEGORIES)) {
   btn.className = "filter-chip";
   btn.dataset.filter = key;
   btn.style.setProperty("--accent", cat.color);
-  btn.textContent = cat.label;
+  btn.textContent = `${cat.icon} ${cat.label}`;
   filtersEl.appendChild(btn);
 }
 
@@ -174,7 +199,10 @@ function applyFilter() {
 
     const marker = markers[place.id];
     if (marker) {
-      if (visible && !map.hasLayer(marker)) marker.addTo(map);
+      if (visible && !map.hasLayer(marker)) {
+        marker.addTo(map);
+        updateMarkerVisual(place.id); // le marqueur re-ajouté a un DOM neuf
+      }
       if (!visible && map.hasLayer(marker)) map.removeLayer(marker);
     }
   }
@@ -232,6 +260,13 @@ function buildCard(place) {
           : ""
       }
     </div>
+    <div class="reactions" data-id="${place.id}" aria-label="Réactions du groupe">
+      ${REACTIONS.map(
+        (emoji) => `<button class="reaction" data-emoji="${emoji}" data-id="${place.id}" aria-pressed="false">
+        <span class="r-emoji" aria-hidden="true">${emoji}</span><span class="r-count">0</span>
+      </button>`
+      ).join("")}
+    </div>
   `;
 
   return article;
@@ -248,7 +283,7 @@ for (const [key, cat] of Object.entries(CATEGORIES)) {
   const title = document.createElement("h2");
   title.className = "category-title";
   title.style.setProperty("--accent", cat.color);
-  title.textContent = cat.label;
+  title.textContent = `${cat.icon} ${cat.label}`;
   section.appendChild(title);
 
   const cards = document.createElement("div");
@@ -264,6 +299,12 @@ listEl.addEventListener("click", (e) => {
   if (locateBtn) {
     const place = PLACES.find((p) => p.id === locateBtn.dataset.id);
     if (place) flyToPlace(place);
+    return;
+  }
+
+  const reactionBtn = e.target.closest(".reaction");
+  if (reactionBtn) {
+    toggleReaction(reactionBtn.dataset.id, reactionBtn.dataset.emoji);
     return;
   }
 
@@ -325,11 +366,36 @@ function celebrate() {
   window.setTimeout(() => layer.remove(), 4600);
 }
 
+function updateMarkerVisual(placeId) {
+  const marker = markers[placeId];
+  const el = marker && marker.getElement();
+  const dot = el && el.querySelector(".map-marker");
+  if (dot) dot.classList.toggle("is-visited", !!visitedState[placeId]);
+}
+
+function updateReactions(placeId) {
+  const wrap = document.querySelector(`.reactions[data-id="${placeId}"]`);
+  if (!wrap) return;
+
+  const votes = reactionState[placeId] || {};
+  const mine = votes[clientId];
+
+  for (const btn of wrap.querySelectorAll(".reaction")) {
+    const emoji = btn.dataset.emoji;
+    const count = Object.values(votes).filter((v) => v === emoji).length;
+    btn.querySelector(".r-count").textContent = String(count);
+    btn.classList.toggle("has-votes", count > 0);
+    btn.classList.toggle("is-mine", mine === emoji);
+    btn.setAttribute("aria-pressed", String(mine === emoji));
+  }
+}
+
 function updateCardVisual(placeId, animate = false) {
   const isVisited = !!visitedState[placeId];
   const card = document.getElementById(`place-${placeId}`);
   const btn = card ? card.querySelector(".visited-toggle") : null;
   if (card) card.classList.toggle("is-visited", isVisited);
+  updateMarkerVisual(placeId);
   if (btn) {
     btn.setAttribute("aria-pressed", String(isVisited));
     btn.querySelector(".visited-label").textContent = isVisited
@@ -387,6 +453,20 @@ function initFirebase() {
           "Suivi partagé indisponible pour le moment (voir la console).";
       }
     );
+
+    onSnapshot(
+      collection(db, REACTIONS_COLLECTION),
+      (snapshot) => {
+        for (const change of snapshot.docChanges()) {
+          reactionState[change.doc.id] =
+            change.type === "removed" ? {} : change.doc.data().votes || {};
+          updateReactions(change.doc.id);
+        }
+      },
+      (error) => {
+        console.error("Erreur Firestore (réactions, lecture) :", error);
+      }
+    );
   } catch (error) {
     console.error("Erreur d'initialisation Firebase :", error);
     progressLabel.textContent =
@@ -404,6 +484,22 @@ function toggleVisited(placeId) {
     { merge: true }
   ).catch((error) => {
     console.error("Erreur Firestore (écriture) :", error);
+  });
+}
+
+function toggleReaction(placeId, emoji) {
+  if (!db) return;
+  const removing = (reactionState[placeId] || {})[clientId] === emoji;
+  if (!removing && "vibrate" in navigator) navigator.vibrate(20);
+  setDoc(
+    doc(db, REACTIONS_COLLECTION, placeId),
+    {
+      votes: { [clientId]: removing ? deleteField() : emoji },
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  ).catch((error) => {
+    console.error("Erreur Firestore (réaction) :", error);
   });
 }
 

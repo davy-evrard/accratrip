@@ -13,6 +13,16 @@ service cloud.firestore {
                    && request.resource.data.visited is bool;
     }
 
+    // Un document par lieu dans la collection "reactions", de la forme
+    // { votes: { <idAppareil>: <emoji> }, updatedAt: ... }. Meme compromis
+    // que "visited" : ouvert en lecture/ecriture publique, mais on borne la
+    // forme du document.
+    match /reactions/{placeId} {
+      allow read: if true;
+      allow write: if request.resource.data.keys().hasOnly(['votes', 'updatedAt'])
+                   && request.resource.data.votes is map;
+    }
+
     // Tout le reste de la base est fermé par défaut.
     match /{document=**} {
       allow read, write: if false;
