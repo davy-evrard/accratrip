@@ -49,6 +49,43 @@ const TRIP_START = new Date("2026-10-07T00:00:00Z");
 const TRIP_END = new Date("2026-10-11T23:59:59Z");
 const TRIP_DAYS = 5;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const CD_UNITS = ["jours", "heures", "min", "sec"];
+
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+
+function renderTicker(el, ms) {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const values = [
+    String(Math.floor(total / 86400)),
+    pad2(Math.floor((total % 86400) / 3600)),
+    pad2(Math.floor((total % 3600) / 60)),
+    pad2(total % 60),
+  ];
+
+  if (!el.classList.contains("has-ticker")) {
+    el.classList.add("has-ticker");
+    el.innerHTML =
+      '<span class="cd-grid">' +
+      CD_UNITS.map(
+        (unit, i) =>
+          (i ? '<span class="cd-sep">:</span>' : "") +
+          `<span class="cd-cell"><b></b><span>${unit}</span></span>`
+      ).join("") +
+      "</span>";
+  }
+
+  const nums = el.querySelectorAll(".cd-cell b");
+  values.forEach((value, i) => {
+    if (nums[i] && nums[i].textContent !== value) nums[i].textContent = value;
+  });
+  el.setAttribute(
+    "aria-label",
+    `Départ dans ${values[0]} jours, ${Number(values[1])} heures, ` +
+      `${Number(values[2])} minutes et ${Number(values[3])} secondes`
+  );
+}
 
 function updateCountdown() {
   const el = document.getElementById("countdown");
@@ -56,16 +93,17 @@ function updateCountdown() {
 
   const now = new Date();
   if (now < TRIP_START) {
-    const days = Math.ceil((TRIP_START - now) / MS_PER_DAY);
-    el.textContent = days <= 1 ? "J-1 avant Accra" : `J-${days} avant Accra`;
     el.dataset.phase = "before";
+    renderTicker(el, TRIP_START - now);
   } else if (now <= TRIP_END) {
+    el.dataset.phase = "during";
+    el.classList.remove("has-ticker");
     const dayNum = Math.floor((now - TRIP_START) / MS_PER_DAY) + 1;
     el.textContent = `Jour ${dayNum} / ${TRIP_DAYS} à Accra`;
-    el.dataset.phase = "during";
   } else {
-    el.textContent = "Souvenirs d'Accra";
     el.dataset.phase = "after";
+    el.classList.remove("has-ticker");
+    el.textContent = "Souvenirs d'Accra";
   }
 }
 
@@ -372,4 +410,4 @@ function toggleVisited(placeId) {
 initFirebase();
 updateProgress();
 updateCountdown();
-window.setInterval(updateCountdown, 60 * 60 * 1000);
+window.setInterval(updateCountdown, 1000);
